@@ -1,0 +1,24 @@
+# Ambiente local de desenvolvimento — apenas o PostgreSQL.
+# A aplicação roda no host (./mvnw spring-boot:run) e conecta neste container.
+# Variáveis lidas de .env (ver .env.example). NUNCA versionar .env real.
+services:
+  postgres:
+    image: postgres:17
+    container_name: caixinha-bet-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-caixinhabet}
+      POSTGRES_USER: ${DB_USER:-caixinhabet}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-caixinhabet}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - caixinha-bet-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-caixinhabet} -d ${DB_NAME:-caixinhabet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  caixinha-bet-pgdata:
+    name: caixinha-bet-pgdata

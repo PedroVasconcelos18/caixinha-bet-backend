@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<!--
+		  Spring Boot 4.x abandonou o sufixo ".RELEASE" (legado do Boot <=2.x).
+		  O Spring Initializr reporta o id como "4.0.6.RELEASE", mas o artefato
+		  publicado no Maven Central é "4.0.6". Manter sem o sufixo.
+		-->
+		<version>4.0.6</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.caxinhabet</groupId>
+	<artifactId>caixinha-bet-backend</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>caixinha-bet-backend</name>
+	<description>Caixinha Bet backend - orquestrador de maquina de estados financeira</description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>21</java.version>
+		<!-- Versão do Testcontainers gerenciada pelo Spring Boot 4.0.6 BOM. -->
+		<testcontainers.version>2.0.5</testcontainers.version>
+	</properties>
+
+	<!--
+	  BOM import não é transitivo em Maven: o spring-boot-dependencies importa
+	  o testcontainers-bom, mas essas versões NÃO descem para o projeto-filho.
+	  Reimportamos o BOM aqui na MESMA versão que o Spring Boot 4.0.6 gerencia
+	  (2.0.5) — assim os artefatos org.testcontainers:* não precisam de
+	  <version> à mão e nada fica desalinhado com o Boot.
+	-->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+
+		<!--
+		  Mail (Story 2.4): convite por e-mail aos Participantes (FR-4).
+		  Boot 4 mantém o artifact id tradicional `spring-boot-starter-mail`,
+		  mas a auto-config moveu de `org.springframework.boot.autoconfigure.mail.*`
+		  para `org.springframework.boot.mail.autoconfigure.*`. Em dev o
+		  adapter ativo é o LogConviteEmailSender (não usa JavaMailSender);
+		  em produção o SmtpConviteEmailSender usa JavaMailSender e
+		  `spring.mail.*` configurado via env.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!--
+		  Flyway é o dono do schema (NUNCA o Hibernate — ddl-auto: validate).
+		  No Spring Boot 4 a AUTOCONFIG do Flyway foi modularizada para o
+		  artefato 'spring-boot-flyway' (no Boot 3 vinha de
+		  spring-boot-autoconfigure). Só adicionar 'flyway-core' coloca o
+		  Flyway no classpath mas NÃO o aciona no boot — é preciso
+		  'spring-boot-flyway' (traz flyway-core + a autoconfig Spring).
+		  'flyway-database-postgresql' habilita o suporte ao Postgres.
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-flyway</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+
+		<!--
+		  Testcontainers: o teste de integração sobe um Postgres real em Docker,
+		  sem depender de Postgres instalado no runner de CI (AC-3 / Dev Notes).
+		-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!--
+		  Testcontainers 2.x (gerenciado pelo Spring Boot 4.0.6) renomeou os
+		  artefatos: 'postgresql' -> 'testcontainers-postgresql',
+		  'junit-jupiter' -> 'testcontainers-junit-jupiter'. Os nomes antigos
+		  eram do Testcontainers 1.x e NÃO existem mais no BOM 2.x.
+		-->
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!--
+		  ArchUnit: enforcement mecânico das regras hexagonais (AR-3/AR-9).
+		  Falha o build se alguém violar a fronteira do módulo pagamento —
+		  resposta arquitetural a R-7/C-3 (PSP trocável) não pode depender
+		  só de convenção.
+		-->
+		<dependency>
+			<groupId>com.tngtech.archunit</groupId>
+			<artifactId>archunit-junit5</artifactId>
+			<version>1.4.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

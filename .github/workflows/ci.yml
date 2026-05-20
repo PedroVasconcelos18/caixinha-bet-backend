@@ -1,0 +1,29 @@
+name: CI
+
+# Build + testes a cada push e pull request. O pipeline falha se o build OU
+# qualquer teste falhar (inclui PostgresIntegracaoTest via Testcontainers —
+# os runners do GitHub Actions têm Docker disponível).
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: build + verify (JDK 21)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: clean verify
+        # -B = batch (sem cor/prompt). clean verify roda compilação + todos os
+        # testes (unitários + integração Testcontainers). Falha => pipeline
+        # vermelho.
+        run: ./mvnw -B clean verify

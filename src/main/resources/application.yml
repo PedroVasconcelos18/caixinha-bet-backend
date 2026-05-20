@@ -1,0 +1,115 @@
+spring:
+  application:
+    name: caixinha-bet-backend
+
+  datasource:
+    # Lido de variáveis de ambiente (ver .env.example). Sem segredos no repo.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:caixinhabet}
+    username: ${DB_USER:caixinhabet}
+    password: ${DB_PASSWORD:caixinhabet}
+
+  jpa:
+    hibernate:
+      # Flyway é o ÚNICO dono do schema. O Hibernate NUNCA cria/altera tabela.
+      # 'validate' falha o boot se o schema divergir das entidades (AR-9, NFR-1).
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # Naming físico snake_case: domínio/API em camelCase, Postgres em
+        # snake_case, conversão SÓ aqui na borda do JPA (AR-8).
+        physical_naming_strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # Schema versionado desde o baseline vazio (V1) — sem baseline-on-migrate.
+
+  mvc:
+    problemdetails:
+      # Erros do Spring MVC (404, 415, validation, etc.) respondem como
+      # application/problem+json (RFC 9457) — corretude de contrato por
+      # construção (AR-8). Story 1.3 + GlobalExceptionHandler complementam
+      # para exceções de domínio.
+      enabled: true
+
+  # Mail (Story 2.4). Em dev fica vazio (sender=log); em produção configurar
+  # via env (SMTP_HOST/PORT/USER/PASSWORD). Provedores típicos: SendGrid,
+  # Mailgun, AWS SES — Pedro decide na hora do deploy.
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Configuração do app (Story 2.1).
+# public-base-url é a URL do FRONT (não da API). O magic link enviado por
+# e-mail aponta para `${app.public-base-url}/auth/callback?token=...`; a
+# página do front em /auth/callback faz fetch para a API e recebe o cookie
+# de sessão. Em produção: HTTPS do domínio público. Em dev: http://localhost:3000.
+app:
+  public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:3000}
+
+# Configuração do módulo auth (Story 2.1).
+# - ttl-minutos: tempo de vida do magic link. 15 min é o trade-off
+#   conveniência (não cabe o usuário esperar) vs. exposição (link comprometido
+#   curto-circuita rápido). FR-16 não fixa valor; arquitetura também não.
+# - sender: estratégia de envio. "log" = LogMagicLinkSender (loga URL no
+#   console — o adapter ativo no MVP até a Story 2.4 trazer SMTP). Qualquer
+#   outro valor falha o boot (defesa: produção não pode bootar com sender=log).
+# - sessao.ttl-dias: duração do cookie de sessão. 7 dias casa com o Max-Age
+#   do Set-Cookie. SessaoStore in-memory expira atomicamente.
+auth:
+  magic-link:
+    ttl-minutos: 15
+    # Story 2.4: ampliado para aceitar "smtp" (SmtpMagicLinkSender ativo).
+    # Default "log" (LogMagicLinkSender). Em produção: setar AUTH_MAGIC_LINK_SENDER=smtp.
+    sender: ${AUTH_MAGIC_LINK_SENDER:log}
+    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+  sessao:
+    ttl-dias: 7
+
+# Configuração do módulo caixinha (Story 2.4).
+# convite.sender: "log" (default — LogConviteEmailSender, dev) ou "smtp"
+# (SmtpConviteEmailSender, produção). CaixinhaBootGuard valida no boot.
+caixinha:
+  convite:
+    sender: ${CAIXINHA_CONVITE_SENDER:log}
+    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+
+# Configuração do PSP (Story 1.4).
+# Sandbox por default (R-7 mitigação: trocabilidade de ambiente sem código).
+# Story 1.5 valida o gate; outras stories continuam usando esta seção.
+asaas:
+  # API sandbox confirmada com chave de homologação real do Pedro em
+  # 2026-05-19: https://sandbox.asaas.com/api/v3 (não api-sandbox.asaas.com).
+  # Note que o /api/v3 já está embutido na base-url, então o adapter chama
+  # endpoints sem prefixo (POST /payments, GET /payments/{id}/pixQrCode).
+  base-url: ${ASAAS_BASE_URL:https://sandbox.asaas.com/api/v3}
+  access-token: ${ASAAS_ACCESS_TOKEN:}
+  webhook-auth-token: ${ASAAS_WEBHOOK_AUTH_TOKEN:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Apenas health exposto no MVP (observabilidade/reconciliação evoluem
+        # nos épicos financeiros). Endpoints sensíveis ficam fechados.
+        include: health
+  endpoint:
+    health:
+      # 'db' aparece nos componentes do health (Postgres é dependência dura).
+      show-components: always
+  health:
+    # Story 2.4: SMTP não é dependência DURA do app (envio é best-effort
+    # pós-commit). Health do app NÃO deve cair só porque SMTP está
+    # indisponível. Em dev local com SMTP_HOST vazio o indicator default
+    # reporta DOWN; desligar evita falso negativo.
+    mail:
+      enabled: false
