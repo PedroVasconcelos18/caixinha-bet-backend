@@ -86,6 +86,10 @@ public record NovaCaixinhaSpec(
 
 		if (prazoEntrada == null) {
 			motivos.add("prazoEntrada é obrigatório");
+		} else if (!prazoEntrada.isAfter(Instant.now())) {
+			// O prazoEntrada é imutável após a criação: um prazo já vencido
+			// nasceria com o palpite congelado. Rejeita datas no passado.
+			motivos.add("prazoEntrada deve ser uma data futura");
 		}
 		if (dataApuracao == null) {
 			motivos.add("dataApuracao é obrigatório");

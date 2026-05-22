@@ -138,4 +138,44 @@ class NovaCaixinhaSpecTest {
 		assertThat(spec.validar())
 				.anyMatch(m -> m.contains("numeroGanhadores"));
 	}
+
+	@Test
+	@DisplayName("prazoEntrada no passado → motivo 'data futura' registrado")
+	void prazoEntradaNoPassado() {
+		Instant passado = Instant.now().minusSeconds(3600);
+		NovaCaixinhaSpec spec =
+				new NovaCaixinhaSpec(
+						"T",
+						"A",
+						"B",
+						Money.of("10.00"),
+						2,
+						1,
+						passado,
+						passado.plusSeconds(7200), // apuração depois do prazo
+						List.of("X", "Y"),
+						List.of());
+		assertThat(spec.validar())
+				.anyMatch(m -> m.contains("prazoEntrada") && m.contains("futura"));
+	}
+
+	@Test
+	@DisplayName("prazoEntrada no futuro → nenhum motivo de 'data futura'")
+	void prazoEntradaNoFuturo() {
+		Instant futuro = Instant.now().plusSeconds(3600);
+		NovaCaixinhaSpec spec =
+				new NovaCaixinhaSpec(
+						"T",
+						"A",
+						"B",
+						Money.of("10.00"),
+						2,
+						1,
+						futuro,
+						futuro.plusSeconds(7200),
+						List.of("X", "Y"),
+						List.of());
+		assertThat(spec.validar())
+				.noneMatch(m -> m.contains("futura"));
+	}
 }
