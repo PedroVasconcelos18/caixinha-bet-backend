@@ -7,70 +7,70 @@ import com.caxinhabet.auth.adapter.persistence.UsuarioRepository;
 import com.caxinhabet.auth.adapter.session.SessaoStore;
 import com.caxinhabet.auth.domain.AcessoExpiradoException;
 import com.caxinhabet.auth.domain.AcessoJaConsumidoException;
+import com.caxinhabet.auth.domain.Senha;
 import com.caxinhabet.auth.domain.SessaoUsuario;
 import com.caxinhabet.auth.domain.TokenAcesso;
 import com.caxinhabet.auth.domain.TokenInvalidoException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Caso de uso: consumir magic link e abrir sessão (Story 2.1, AC-2/AC-3).
+ * Caso de uso: redefinir senha a partir de um token de reset (auth por
+ * senha, 2026-05). Substitui o {@code ConsumirAcessoUseCase} do magic link.
  *
  * <p>Fluxo (tudo em uma transação):
  * <ol>
- *   <li>Hasheia o token recebido.
- *   <li>Busca a solicitação. Se não existe → {@link TokenInvalidoException}
- *       (404).
- *   <li>Se {@code consumido_em != null} → {@link AcessoJaConsumidoException}
- *       (410).
- *   <li>Se {@code agora >= expira_em} → {@link AcessoExpiradoException}
- *       (410).
- *   <li>Marca {@code consumido_em = now}; busca o {@code Usuario}; cria
- *       a sessão no {@link SessaoStore}.
+ *   <li>Valida a senha nova ({@link Senha}) ANTES de mexer no token — se
+ *       a senha é fraca, a transação desfaz e o token continua usável.
+ *   <li>Hasheia o token; busca a solicitação ({@code 404} se não existe).
+ *   <li>{@code consumido_em != null} → {@link AcessoJaConsumidoException}
+ *       ({@code 410}); {@code agora >= expira_em} → {@link
+ *       AcessoExpiradoException} ({@code 410}).
+ *   <li>Marca {@code consumido_em}; grava o novo {@code senhaHash} no
+ *       {@code Usuario}; abre sessão (o usuário sai logado).
  * </ol>
  *
- * <p>A ordem das checagens (consumido antes de expirado) casa com o AC-3:
- * mensagem clara distinta para o front oferecer reenvio.
- *
- * <p>Race condition: dois requests com o mesmo token chegando ao mesmo
- * tempo. Defesa: {@code consumidoEm} é atualizado pelo Hibernate na mesma
- * transação; o segundo request leria {@code consumido_em != null} e
- * estouraria {@link AcessoJaConsumidoException}. Para concorrência
- * dura, um futuro UPDATE explícito com WHERE consumido_em IS NULL
- * elimina qualquer brecha de leitura suja — não implementado nesta story
- * porque o cenário é improvável (duplo-clique no link é raro em ms).
+ * <p>Também serve para usuários legados (sem senha) definirem a primeira
+ * senha — {@code definirSenhaHash} grava igual, exista hash anterior ou não.
  */
 @Service
-public class ConsumirAcessoUseCase {
+public class RedefinirSenhaUseCase {
 
 	private final SolicitacaoAcessoRepository solicitacoes;
 	private final UsuarioRepository usuarios;
 	private final SessaoStore sessaoStore;
+	private final PasswordEncoder encoder;
 	private final AuthProperties authProps;
 
-	public ConsumirAcessoUseCase(
+	public RedefinirSenhaUseCase(
 			SolicitacaoAcessoRepository solicitacoes,
 			UsuarioRepository usuarios,
 			SessaoStore sessaoStore,
+			PasswordEncoder encoder,
 			AuthProperties authProps) {
 		this.solicitacoes = solicitacoes;
 		this.usuarios = usuarios;
 		this.sessaoStore = sessaoStore;
+		this.encoder = encoder;
 		this.authProps = authProps;
 	}
 
 	@Transactional
-	public Resultado executar(String tokenCru) {
+	public SessaoUsuario executar(String tokenCru, String senhaNovaBruta) {
+		Senha senhaNova = Senha.crua(senhaNovaBruta); // valida antes de consumir o token
 		TokenAcesso token = TokenAcesso.de(tokenCru);
+
 		SolicitacaoAcessoEntity solicitacao =
-				solicitacoes.findByTokenHash(token.hash()).orElseThrow(TokenInvalidoException::new);
+				solicitacoes
+						.findByTokenHash(token.hash())
+						.orElseThrow(TokenInvalidoException::new);
 
 		if (solicitacao.getConsumidoEm() != null) {
 			throw new AcessoJaConsumidoException();
 		}
-
 		Instant agora = Instant.now();
 		if (!agora.isBefore(solicitacao.getExpiraEm())) {
 			throw new AcessoExpiradoException();
@@ -80,22 +80,21 @@ public class ConsumirAcessoUseCase {
 		solicitacoes.save(solicitacao);
 
 		UsuarioEntity usuario =
-				usuarios.findById(solicitacao.getUsuarioId())
+				usuarios
+						.findById(solicitacao.getUsuarioId())
 						.orElseThrow(
 								() ->
 										new IllegalStateException(
 												"Solicitação aponta para usuário inexistente: id="
 														+ solicitacao.getUsuarioId()));
+		usuario.definirSenhaHash(encoder.encode(senhaNova.valor()));
+		usuarios.save(usuario);
 
 		String idSessao = TokenAcesso.gerar().valor();
-		Instant expiraSessao =
-				agora.plus(authProps.getSessao().getTtlDias(), ChronoUnit.DAYS);
+		Instant expira = agora.plus(authProps.getSessao().getTtlDias(), ChronoUnit.DAYS);
 		SessaoUsuario sessao =
-				new SessaoUsuario(idSessao, usuario.getId(), usuario.getEmail(), agora, expiraSessao);
+				new SessaoUsuario(idSessao, usuario.getId(), usuario.getEmail(), agora, expira);
 		sessaoStore.criar(sessao);
-
-		return new Resultado(sessao, solicitacao.getRedirectTo());
+		return sessao;
 	}
-
-	public record Resultado(SessaoUsuario sessao, String redirectTo) {}
 }

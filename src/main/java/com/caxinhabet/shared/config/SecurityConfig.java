@@ -24,9 +24,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *
  * <p><b>Whitelist (rotas públicas):</b>
  * <ul>
- *   <li>{@code POST /auth/solicitar-acesso} — entrada do fluxo, ninguém
- *       está autenticado ainda
- *   <li>{@code GET  /auth/callback} — consome o token e abre sessão
+ *   <li>{@code POST /auth/registrar} — cadastro explícito, ninguém está
+ *       autenticado ainda
+ *   <li>{@code POST /auth/login} — login por e-mail + senha
+ *   <li>{@code POST /auth/recuperar-senha} — dispara o link de reset
+ *   <li>{@code POST /auth/redefinir-senha} — consome o token e abre sessão
  *   <li>{@code POST /webhooks/asaas} — autentica-se por
  *       {@code asaas-access-token} (Story 1.4); cookie de sessão não se
  *       aplica
@@ -68,7 +70,12 @@ class SecurityConfig {
 						e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 				.authorizeHttpRequests(
 						a ->
-								a.requestMatchers("/auth/solicitar-acesso", "/auth/callback", "/auth/sair")
+								a.requestMatchers(
+												"/auth/registrar",
+												"/auth/login",
+												"/auth/recuperar-senha",
+												"/auth/redefinir-senha",
+												"/auth/sair")
 										.permitAll()
 										.requestMatchers("/webhooks/asaas")
 										.permitAll()

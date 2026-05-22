@@ -53,6 +53,13 @@ public class UsuarioEntity {
 	@Column(name = "asaas_customer_id", length = 64)
 	private String asaasCustomerId;
 
+	// Auth por senha (2026-05): hash BCrypt da senha (60 chars). Nullable —
+	// usuários legados do magic link não têm senha (definem via reset). O
+	// valor cru NUNCA é armazenado; só o hash. Anti-padrão proibido: expor
+	// este campo em qualquer response (não entra no MeResponse).
+	@Column(name = "senha_hash", length = 60)
+	private String senhaHash;
+
 	protected UsuarioEntity() {
 		// JPA exige construtor sem-args.
 	}
@@ -64,6 +71,21 @@ public class UsuarioEntity {
 
 	public static UsuarioEntity criar(String email) {
 		return new UsuarioEntity(email, Instant.now());
+	}
+
+	/**
+	 * Cria um Usuário já com perfil e senha — usado pelo cadastro explícito
+	 * (auth por senha). Diferente de {@link #criar(String)}, que nasce só
+	 * com e-mail (cadastro implícito legado do magic link).
+	 *
+	 * @param senhaHash hash BCrypt já calculado pelo use case.
+	 */
+	public static UsuarioEntity criarComSenha(
+			String email, String nomeCompleto, String cpf, String senhaHash) {
+		UsuarioEntity u = new UsuarioEntity(email, Instant.now());
+		u.definirPerfilPagamento(nomeCompleto, cpf);
+		u.senhaHash = senhaHash;
+		return u;
 	}
 
 	public Long getId() {
@@ -107,6 +129,18 @@ public class UsuarioEntity {
 
 	public String getAsaasCustomerId() {
 		return asaasCustomerId;
+	}
+
+	public String getSenhaHash() {
+		return senhaHash;
+	}
+
+	/**
+	 * Grava o hash BCrypt da senha (cadastro ou redefinição). Recebe o hash
+	 * já calculado — a entidade não conhece o {@code PasswordEncoder}.
+	 */
+	public void definirSenhaHash(String senhaHash) {
+		this.senhaHash = senhaHash;
 	}
 
 	/**

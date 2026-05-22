@@ -3,6 +3,9 @@ package com.caxinhabet.shared.error;
 import com.caxinhabet.auth.domain.AcessoExpiradoException;
 import com.caxinhabet.auth.domain.AcessoJaConsumidoException;
 import com.caxinhabet.auth.domain.ChavePixObrigatoriaException;
+import com.caxinhabet.auth.domain.CpfJaCadastradoException;
+import com.caxinhabet.auth.domain.CredenciaisInvalidasException;
+import com.caxinhabet.auth.domain.EmailJaCadastradoException;
 import com.caxinhabet.auth.domain.TokenInvalidoException;
 import com.caxinhabet.caixinha.domain.ApuracaoInvalidaException;
 import com.caxinhabet.caixinha.domain.CriacaoCaixinhaInvalidaException;
@@ -46,6 +49,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	private static final URI TYPE_INTERNAL =
 			URI.create("https://caixinha.bet/problems/erro-interno");
 
+	private static final URI TYPE_REQUISICAO_INVALIDA =
+			URI.create("https://caixinha.bet/problems/requisicao-invalida");
+
 	private static final URI TYPE_TOKEN_INVALIDO =
 			URI.create("https://caixinha.bet/problems/token-invalido");
 
@@ -54,6 +60,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final URI TYPE_ACESSO_JA_CONSUMIDO =
 			URI.create("https://caixinha.bet/problems/acesso-ja-consumido");
+
+	private static final URI TYPE_CREDENCIAIS_INVALIDAS =
+			URI.create("https://caixinha.bet/problems/credenciais-invalidas");
+
+	private static final URI TYPE_EMAIL_JA_CADASTRADO =
+			URI.create("https://caixinha.bet/problems/email-ja-cadastrado");
+
+	private static final URI TYPE_CPF_JA_CADASTRADO =
+			URI.create("https://caixinha.bet/problems/cpf-ja-cadastrado");
 
 	private static final URI TYPE_CAIXINHA_INVALIDA =
 			URI.create("https://caixinha.bet/problems/caixinha-invalida");
@@ -89,6 +104,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return problem;
 	}
 
+	/**
+	 * Validação fina feita nos value objects de domínio ({@code Cpf},
+	 * {@code Senha}, etc.): entrada sintaticamente presente mas semanticamente
+	 * inválida (CPF com dígito verificador errado, senha fraca, nome em
+	 * branco). 400 — mesmo nível do Bean Validation do MVC, não é erro
+	 * interno (catch-all 500).
+	 */
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problem.setType(TYPE_REQUISICAO_INVALIDA);
+		problem.setTitle("Requisição inválida");
+		return problem;
+	}
+
 	@ExceptionHandler(TokenInvalidoException.class)
 	public ProblemDetail handleTokenInvalido(TokenInvalidoException ex) {
 		ProblemDetail problem =
@@ -113,6 +144,45 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				ProblemDetail.forStatusAndDetail(HttpStatus.GONE, ex.getMessage());
 		problem.setType(TYPE_ACESSO_JA_CONSUMIDO);
 		problem.setTitle("Link já utilizado");
+		return problem;
+	}
+
+	/**
+	 * Login com credenciais incorretas (auth por senha). 401 — mensagem
+	 * genérica, sem distinguir se o e-mail existe (anti-enumeração).
+	 */
+	@ExceptionHandler(CredenciaisInvalidasException.class)
+	public ProblemDetail handleCredenciaisInvalidas(CredenciaisInvalidasException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+		problem.setType(TYPE_CREDENCIAIS_INVALIDAS);
+		problem.setTitle("Credenciais inválidas");
+		return problem;
+	}
+
+	/**
+	 * Cadastro com e-mail que já tem conta. 409 — type próprio para o
+	 * front destacar o campo de e-mail.
+	 */
+	@ExceptionHandler(EmailJaCadastradoException.class)
+	public ProblemDetail handleEmailJaCadastrado(EmailJaCadastradoException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problem.setType(TYPE_EMAIL_JA_CADASTRADO);
+		problem.setTitle("E-mail já cadastrado");
+		return problem;
+	}
+
+	/**
+	 * Cadastro com CPF que já tem conta. 409 — type próprio para o front
+	 * destacar o campo de CPF.
+	 */
+	@ExceptionHandler(CpfJaCadastradoException.class)
+	public ProblemDetail handleCpfJaCadastrado(CpfJaCadastradoException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problem.setType(TYPE_CPF_JA_CADASTRADO);
+		problem.setTitle("CPF já cadastrado");
 		return problem;
 	}
 

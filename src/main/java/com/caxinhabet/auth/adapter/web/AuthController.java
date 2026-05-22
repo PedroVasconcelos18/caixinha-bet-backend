@@ -5,13 +5,14 @@ import com.caxinhabet.auth.adapter.persistence.UsuarioRepository;
 import com.caxinhabet.auth.adapter.session.SessaoStore;
 import com.caxinhabet.auth.app.AtualizarChavePixUseCase;
 import com.caxinhabet.auth.app.AtualizarPerfilPagamentoUseCase;
+import com.caxinhabet.auth.app.AutenticarUseCase;
 import com.caxinhabet.auth.app.AuthProperties;
-import com.caxinhabet.auth.app.ConsumirAcessoUseCase;
-import com.caxinhabet.auth.app.SolicitarAcessoUseCase;
+import com.caxinhabet.auth.app.RedefinirSenhaUseCase;
+import com.caxinhabet.auth.app.RegistrarUsuarioUseCase;
+import com.caxinhabet.auth.app.SolicitarResetSenhaUseCase;
 import com.caxinhabet.auth.domain.SessaoUsuario;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.net.URI;
 import java.time.Duration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,17 +24,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Endpoints HTTP do módulo auth (Story 2.1).
+ * Endpoints HTTP do módulo auth (auth por senha, 2026-05 — substitui o
+ * magic link da Story 2.1).
  *
- * <p>O cookie de sessão é montado por {@link #montarCookieSessao} usando
- * {@link ResponseCookie} — HttpOnly + SameSite=Lax sempre; Secure quando
- * a request veio via HTTPS (em dev local HTTP, Secure é omitido para o
- * cookie funcionar; em produção HTTPS, sempre Secure).
+ * <p>Cadastro, login e redefinição de senha abrem sessão pelo mesmo
+ * mecanismo: {@link #montarCookieSessao} monta o cookie {@code HttpOnly}
+ * + {@code SameSite=Lax} (+{@code Secure} sob HTTPS).
  */
 @RestController
 @RequestMapping("/auth")
@@ -41,8 +41,10 @@ class AuthController {
 
 	static final String COOKIE_SESSAO = "caixinhabet_sessao";
 
-	private final SolicitarAcessoUseCase solicitar;
-	private final ConsumirAcessoUseCase consumir;
+	private final RegistrarUsuarioUseCase registrar;
+	private final AutenticarUseCase autenticar;
+	private final SolicitarResetSenhaUseCase solicitarReset;
+	private final RedefinirSenhaUseCase redefinirSenha;
 	private final SessaoStore sessaoStore;
 	private final AuthProperties authProps;
 	private final UsuarioRepository usuarios;
@@ -50,15 +52,19 @@ class AuthController {
 	private final AtualizarPerfilPagamentoUseCase atualizarPerfilPagamento;
 
 	AuthController(
-			SolicitarAcessoUseCase solicitar,
-			ConsumirAcessoUseCase consumir,
+			RegistrarUsuarioUseCase registrar,
+			AutenticarUseCase autenticar,
+			SolicitarResetSenhaUseCase solicitarReset,
+			RedefinirSenhaUseCase redefinirSenha,
 			SessaoStore sessaoStore,
 			AuthProperties authProps,
 			UsuarioRepository usuarios,
 			AtualizarChavePixUseCase atualizarChavePix,
 			AtualizarPerfilPagamentoUseCase atualizarPerfilPagamento) {
-		this.solicitar = solicitar;
-		this.consumir = consumir;
+		this.registrar = registrar;
+		this.autenticar = autenticar;
+		this.solicitarReset = solicitarReset;
+		this.redefinirSenha = redefinirSenha;
 		this.sessaoStore = sessaoStore;
 		this.authProps = authProps;
 		this.usuarios = usuarios;
@@ -66,35 +72,37 @@ class AuthController {
 		this.atualizarPerfilPagamento = atualizarPerfilPagamento;
 	}
 
-	@PostMapping("/solicitar-acesso")
-	ResponseEntity<Void> solicitarAcesso(@Valid @RequestBody SolicitarAcessoRequest req) {
-		solicitar.executar(req.email(), req.redirectTo());
-		// Sempre 204 — não distingue e-mail novo/existente (anti-enumeração).
+	@PostMapping("/registrar")
+	ResponseEntity<MeResponse> registrar(
+			@Valid @RequestBody RegistrarRequest req, HttpServletRequest httpReq) {
+		SessaoUsuario sessao =
+				registrar.executar(req.nomeCompleto(), req.cpf(), req.email(), req.senha());
+		return respostaComSessao(sessao, httpReq);
+	}
+
+	@PostMapping("/login")
+	ResponseEntity<MeResponse> login(
+			@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
+		SessaoUsuario sessao = autenticar.executar(req.email(), req.senha());
+		return respostaComSessao(sessao, httpReq);
+	}
+
+	@PostMapping("/recuperar-senha")
+	ResponseEntity<Void> recuperarSenha(@Valid @RequestBody RecuperarSenhaRequest req) {
+		solicitarReset.executar(req.email());
+		// Sempre 204 — não distingue e-mail com/sem conta (anti-enumeração).
 		return ResponseEntity.noContent().build();
 	}
 
-	@GetMapping("/callback")
-	ResponseEntity<Void> callback(
-			@RequestParam("token") String token,
-			HttpServletRequest httpReq) {
-
-		ConsumirAcessoUseCase.Resultado resultado = consumir.executar(token);
-		ResponseCookie cookie = montarCookieSessao(resultado.sessao(), httpReq.isSecure());
-
-		String destino = resultado.redirectTo() == null ? "/" : resultado.redirectTo();
-		return ResponseEntity.status(HttpStatus.FOUND)
-				.location(URI.create(destino))
-				.header(HttpHeaders.SET_COOKIE, cookie.toString())
-				.build();
+	@PostMapping("/redefinir-senha")
+	ResponseEntity<MeResponse> redefinirSenha(
+			@Valid @RequestBody RedefinirSenhaRequest req, HttpServletRequest httpReq) {
+		SessaoUsuario sessao = redefinirSenha.executar(req.token(), req.senha());
+		return respostaComSessao(sessao, httpReq);
 	}
 
 	@GetMapping("/me")
 	ResponseEntity<MeResponse> me(Authentication auth) {
-		if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não autenticado.");
-		}
-		// v5: front precisa saber chave PIX + perfil de pagamento para
-		// decidir se mostra os forms antes do Palpite/Pagamento.
 		UsuarioEntity u = usuarioAutenticado(auth);
 		return ResponseEntity.ok(MeResponse.de(u));
 	}
@@ -112,21 +120,8 @@ class AuthController {
 			@Valid @RequestBody AtualizarPerfilPagamentoRequest req, Authentication auth) {
 		UsuarioEntity u = usuarioAutenticado(auth);
 		UsuarioEntity atualizado =
-				atualizarPerfilPagamento.executar(
-						u.getId(), req.nomeCompleto(), req.cpf());
+				atualizarPerfilPagamento.executar(u.getId(), req.nomeCompleto(), req.cpf());
 		return ResponseEntity.ok(MeResponse.de(atualizado));
-	}
-
-	private UsuarioEntity usuarioAutenticado(Authentication auth) {
-		if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não autenticado.");
-		}
-		return usuarios
-				.findByEmail(auth.getName())
-				.orElseThrow(
-						() ->
-								new ResponseStatusException(
-										HttpStatus.UNAUTHORIZED, "Usuário não encontrado."));
 	}
 
 	@PostMapping("/sair")
@@ -146,6 +141,35 @@ class AuthController {
 		return ResponseEntity.noContent()
 				.header(HttpHeaders.SET_COOKIE, cookie.toString())
 				.build();
+	}
+
+	/** Monta a resposta 200 com o corpo {@link MeResponse} + cookie de sessão. */
+	private ResponseEntity<MeResponse> respostaComSessao(
+			SessaoUsuario sessao, HttpServletRequest httpReq) {
+		UsuarioEntity u =
+				usuarios
+						.findByEmail(sessao.email())
+						.orElseThrow(
+								() ->
+										new ResponseStatusException(
+												HttpStatus.INTERNAL_SERVER_ERROR,
+												"Sessão aberta para usuário inexistente."));
+		ResponseCookie cookie = montarCookieSessao(sessao, httpReq.isSecure());
+		return ResponseEntity.ok()
+				.header(HttpHeaders.SET_COOKIE, cookie.toString())
+				.body(MeResponse.de(u));
+	}
+
+	private UsuarioEntity usuarioAutenticado(Authentication auth) {
+		if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não autenticado.");
+		}
+		return usuarios
+				.findByEmail(auth.getName())
+				.orElseThrow(
+						() ->
+								new ResponseStatusException(
+										HttpStatus.UNAUTHORIZED, "Usuário não encontrado."));
 	}
 
 	private ResponseCookie montarCookieSessao(SessaoUsuario sessao, boolean isSecure) {

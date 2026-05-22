@@ -1,28 +1,25 @@
 /**
- * Adapter HTTP do módulo auth (Story 2.1).
+ * Adapter HTTP do módulo auth (auth por senha, 2026-05).
  *
  * <p>Endpoints expostos:
  * <ul>
- *   <li>{@code POST /auth/solicitar-acesso} — gera magic link
- *   <li>{@code GET  /auth/callback}         — consome token, abre sessão
+ *   <li>{@code POST /auth/registrar}        — cadastro explícito, abre sessão
+ *   <li>{@code POST /auth/login}            — login por e-mail + senha
+ *   <li>{@code POST /auth/recuperar-senha}  — dispara o link de reset (204)
+ *   <li>{@code POST /auth/redefinir-senha}  — consome o token, grava a nova
+ *                                             senha e abre sessão
  *   <li>{@code GET  /auth/me}               — quem sou eu (autenticado)
  *   <li>{@code POST /auth/sair}             — encerra sessão atual
  * </ul>
  *
  * <p>Cookie de sessão {@code caixinhabet_sessao} é HttpOnly, SameSite=Lax,
  * Secure (quando a request veio via HTTPS), Path=/, Max-Age = 7 dias.
+ * Cadastro, login e redefinição de senha respondem 200 + Set-Cookie + corpo
+ * {@code MeResponse} — o usuário sai logado.
  *
- * <p>Fluxo cross-origin (dev front 3000 + back 8080):
- * <ol>
- *   <li>O magic link no e-mail aponta para
- *       {@code ${app.public-base-url}/auth/callback?token=...} — ou seja,
- *       o FRONT;
- *   <li>A página do front em {@code /auth/callback} faz {@code fetch}
- *       para {@code ${API_BASE_URL}/auth/callback?...} com
- *       {@code credentials: 'include'};
- *   <li>O back responde 302 + Set-Cookie no domínio do back; o navegador
- *       grava o cookie e o front faz client-side navigation para
- *       {@code redirectTo}.
- * </ol>
+ * <p>O link de recuperação enviado por e-mail aponta para o FRONT em
+ * {@code ${app.public-base-url}/redefinir-senha?token=...}; a página do
+ * front coleta a nova senha e chama {@code POST /auth/redefinir-senha} com
+ * {@code credentials: 'include'} para receber o cookie de sessão.
  */
 package com.caxinhabet.auth.adapter.web;
