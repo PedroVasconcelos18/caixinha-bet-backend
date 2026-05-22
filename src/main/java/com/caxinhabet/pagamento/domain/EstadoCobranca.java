@@ -16,8 +16,13 @@ package com.caxinhabet.pagamento.domain;
  *   <li>{@link #invalidada} — substituída por cobrança nova (FR-7: máx 1 ativa).
  *   <li>{@link #expirada} — venceu sem pagamento; Participante voltou a {@code aceito}.
  *   <li>{@link #confirmada} — pagamento confirmado pelo Provedor (Story 3.3).
- *   <li>{@link #estornada} — pagamento confirmado e depois estornado pelo
- *       Provedor (evento {@code PAYMENT_REFUNDED} — Story 3.3).
+ *   <li>{@link #estorno_solicitado} — o estorno foi DISPARADO no Provedor
+ *       (Story 5.1), aguardando a confirmação via webhook
+ *       {@code PAYMENT_REFUNDED}. Estado intermediário que torna o
+ *       reembolso idempotente: o {@code DispararReembolsoService} NÃO
+ *       re-estorna uma cobrança que já está aqui (fix code review Épico 5).
+ *   <li>{@link #estornada} — o estorno foi confirmado pelo Provedor
+ *       (evento {@code PAYMENT_REFUNDED} — Story 3.3).
  * </ul>
  */
 public enum EstadoCobranca {
@@ -25,5 +30,6 @@ public enum EstadoCobranca {
 	invalidada,
 	expirada,
 	confirmada,
+	estorno_solicitado,
 	estornada
 }

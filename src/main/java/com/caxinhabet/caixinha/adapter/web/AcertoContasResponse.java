@@ -42,8 +42,11 @@ public record AcertoContasResponse(
 	 *
 	 * @param email e-mail do Participante.
 	 * @param valorEstorno valor a estornar — o ingresso cheio (Taxa devolvida).
+	 * @param estadoEstorno {@code em_processamento} / {@code concluido}
+	 *     (Story 5.2) — {@code null} se o estorno nem foi disparado.
 	 */
-	public record ItemReembolso(String email, Money valorEstorno) {}
+	public record ItemReembolso(
+			String email, Money valorEstorno, String estadoEstorno) {}
 
 	/** Traduz o {@code Resultado} do use case para o contrato HTTP. */
 	public static AcertoContasResponse de(MontarAcertoContasUseCase.Resultado r) {
@@ -59,7 +62,14 @@ public record AcertoContasResponse(
 						.toList();
 		List<ItemReembolso> reembolsos =
 				r.reembolsos().stream()
-						.map(rb -> new ItemReembolso(rb.email(), rb.valorEstorno()))
+						.map(
+								rb ->
+										new ItemReembolso(
+												rb.email(),
+												rb.valorEstorno(),
+												rb.estadoEstorno() == null
+														? null
+														: rb.estadoEstorno().name()))
 						.toList();
 		return new AcertoContasResponse(
 				r.modo().name().toLowerCase(),

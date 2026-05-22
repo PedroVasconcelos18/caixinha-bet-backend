@@ -176,10 +176,23 @@ class AsaasProvedorPagamentoAdapter implements ProvedorPagamento {
 		};
 	}
 
+	/**
+	 * Estorna integralmente uma cobrança paga: {@code POST /payments/{id}/refund}
+	 * (Épico 5 v5, Story 5.1, FR-11).
+	 *
+	 * <p>O Asaas devolve o valor ao pagador original e, em seguida, envia
+	 * um webhook {@code PAYMENT_REFUNDED} — é esse webhook (Story 3.3) que
+	 * transiciona a cobrança para {@code estornada} e registra o ledger.
+	 * Este método apenas DISPARA o estorno.
+	 *
+	 * <p><b>Idempotência:</b> estornar uma cobrança já estornada faz o Asaas
+	 * responder erro 4xx. O caller (que só dispara para cobranças ainda
+	 * {@code confirmada}) evita o caso; defensivamente, um 4xx aqui não
+	 * deve derrubar o cancelamento inteiro.
+	 */
 	@Override
 	public void estornar(String cobrancaId) {
-		throw new UnsupportedOperationException(
-				"estornar() implementado no Épico 3/5 (FR-11). Story 1.4 = gate-only.");
+		http.post().uri("/payments/{id}/refund", cobrancaId).retrieve().toBodilessEntity();
 	}
 
 	/**

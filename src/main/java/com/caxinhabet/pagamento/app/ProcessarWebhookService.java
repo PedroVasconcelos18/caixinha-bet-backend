@@ -237,9 +237,13 @@ public class ProcessarWebhookService {
 
 	private void aplicarEstorno(
 			CobrancaEntity cobranca, ParticipanteEntity participante, String eventId) {
-		// Estorno só faz sentido sobre cobrança confirmada (fix #1/#2: nunca
-		// sobre ativa/invalidada/expirada/estornada).
-		if (cobranca.getEstado() != EstadoCobranca.confirmada) {
+		// Estorno só faz sentido sobre cobrança que estava paga:
+		//  - `confirmada` — estorno espontâneo do pagador (PIX devolvido).
+		//  - `estorno_solicitado` — o Reembolso da Caixinha cancelada
+		//    (Story 5.1) disparou o estorno; este webhook o confirma.
+		// Nunca sobre ativa/invalidada/expirada/estornada (fix #1/#2 Épico 3).
+		if (cobranca.getEstado() != EstadoCobranca.confirmada
+				&& cobranca.getEstado() != EstadoCobranca.estorno_solicitado) {
 			return;
 		}
 		cobranca.transicionarPara(EstadoCobranca.estornada);

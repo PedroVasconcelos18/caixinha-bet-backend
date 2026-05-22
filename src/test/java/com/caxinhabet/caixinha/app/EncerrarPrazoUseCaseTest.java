@@ -44,6 +44,11 @@ class EncerrarPrazoUseCaseTest {
 		r.add("spring.datasource.password", POSTGRES::getPassword);
 	}
 
+	// Story 5.1: o cancelamento dispara o Reembolso (DispararReembolsoService)
+	// que invoca o PSP — mockado para não fazer HTTP real.
+	@org.springframework.test.context.bean.override.mockito.MockitoBean
+	private com.caxinhabet.pagamento.domain.ProvedorPagamento provedor;
+
 	@Autowired private EncerrarPrazoUseCase encerrar;
 	@Autowired private UsuarioRepository usuarios;
 	@Autowired private CaixinhaRepository caixinhas;

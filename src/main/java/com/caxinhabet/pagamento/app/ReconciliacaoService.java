@@ -37,7 +37,12 @@ public class ReconciliacaoService {
 
 	/** Estados "vivos" — valem reconciliação contínua. */
 	private static final List<EstadoCobranca> ESTADOS_VIVOS =
-			List.of(EstadoCobranca.ativa, EstadoCobranca.confirmada);
+			List.of(
+					EstadoCobranca.ativa,
+					EstadoCobranca.confirmada,
+					// Story 5.1: estorno disparado, aguardando confirmação —
+					// vale reconciliar (webhook PAYMENT_REFUNDED pode perder-se).
+					EstadoCobranca.estorno_solicitado);
 
 	private final CobrancaRepository cobrancas;
 	private final ProvedorPagamento provedor;
@@ -117,6 +122,13 @@ public class ReconciliacaoService {
 			// app diz "confirmada": coerente se o Provedor confirma. Se o
 			// Provedor diz ESTORNADA, é divergência (webhook de estorno perdido).
 			case confirmada -> provedor != StatusCobranca.CONFIRMADA;
+			// app diz "estorno_solicitado" (Story 5.1): o estorno foi
+			// disparado. Coerente enquanto o Provedor ainda diz CONFIRMADA
+			// (estorno em processamento) ou já diz ESTORNADA. Qualquer outro
+			// status é divergência.
+			case estorno_solicitado ->
+					provedor != StatusCobranca.CONFIRMADA
+							&& provedor != StatusCobranca.ESTORNADA;
 			// estados terminais não são reconciliados aqui (não estão em
 			// ESTADOS_VIVOS) — defensivo:
 			case invalidada, expirada, estornada -> false;

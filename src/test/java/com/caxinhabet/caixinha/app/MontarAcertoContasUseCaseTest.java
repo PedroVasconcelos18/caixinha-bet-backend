@@ -176,4 +176,69 @@ class MontarAcertoContasUseCaseTest {
 		assertThatThrownBy(() -> montar.executar(caixinha.getId(), "intruso@local"))
 				.isInstanceOf(ResponseStatusException.class);
 	}
+
+	// ───────── Story 5.2: estado real do estorno ─────────
+
+	@Test
+	@DisplayName("5.2 AC-1: Caixinha cancelada, estorno disparado → em_processamento")
+	void canceladaEstornoEmProcessamento() {
+		// pagante() cria cobrança `confirmada` — estorno disparado mas o
+		// webhook PAYMENT_REFUNDED ainda não chegou.
+		pagante(ORG, vitoriaA.getId());
+		caixinha.transicionarPara(EstadoCaixinha.cancelada);
+		caixinhas.save(caixinha);
+
+		MontarAcertoContasUseCase.Resultado r = montar.executar(caixinha.getId(), ORG);
+
+		assertThat(r.modo()).isEqualTo(MontarAcertoContasUseCase.Modo.REEMBOLSO);
+		assertThat(r.reembolsos()).hasSize(1);
+		assertThat(r.reembolsos().get(0).estadoEstorno())
+				.isEqualTo(
+						com.caxinhabet.caixinha.domain.ConsultaEstadoEstorno.EstadoEstorno
+								.em_processamento);
+	}
+
+	@Test
+	@DisplayName("5.2 AC-2: cobrança estornada (webhook confirmou) → concluido")
+	void canceladaEstornoConcluido() {
+		ParticipanteEntity p = pagante(ORG, vitoriaA.getId());
+		// Simula o webhook PAYMENT_REFUNDED: a cobrança foi a `estornada`.
+		com.caxinhabet.pagamento.adapter.persistence.CobrancaEntity cob =
+				cobrancas.findByCobrancaId("pay-" + ORG).orElseThrow();
+		cob.transicionarPara(
+				com.caxinhabet.pagamento.domain.EstadoCobranca.estornada);
+		cobrancas.save(cob);
+		caixinha.transicionarPara(EstadoCaixinha.cancelada);
+		caixinhas.save(caixinha);
+
+		MontarAcertoContasUseCase.Resultado r = montar.executar(caixinha.getId(), ORG);
+
+		assertThat(r.reembolsos()).hasSize(1);
+		assertThat(r.reembolsos().get(0).estadoEstorno())
+				.isEqualTo(
+						com.caxinhabet.caixinha.domain.ConsultaEstadoEstorno.EstadoEstorno
+								.concluido);
+		assertThat(p.getId()).isNotNull();
+	}
+
+	@Test
+	@DisplayName("5.2 AC-3: cancelada sem pagamento → modo CANCELADA_SEM_REEMBOLSO")
+	void canceladaSemPagamento() {
+		// Participante criado mas SEM cobrança (não pagou).
+		participantes.save(
+				new ParticipanteEntity(
+						caixinha.getId(),
+						organizadorId,
+						ORG,
+						true,
+						StatusParticipante.aceito));
+		caixinha.transicionarPara(EstadoCaixinha.cancelada);
+		caixinhas.save(caixinha);
+
+		MontarAcertoContasUseCase.Resultado r = montar.executar(caixinha.getId(), ORG);
+
+		assertThat(r.modo())
+				.isEqualTo(MontarAcertoContasUseCase.Modo.CANCELADA_SEM_REEMBOLSO);
+		assertThat(r.reembolsos()).isEmpty();
+	}
 }

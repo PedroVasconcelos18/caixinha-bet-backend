@@ -103,6 +103,10 @@ caixinha:
   premio-ganho:
     sender: ${CAIXINHA_PREMIO_GANHO_SENDER:log}
     email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+  # Story 5.1: aviso de cancelamento da Caixinha (FR-11).
+  cancelamento:
+    sender: ${CAIXINHA_CANCELAMENTO_SENDER:log}
+    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
 
 # Configuração do PSP (Story 1.4).
 # Sandbox por default (R-7 mitigação: trocabilidade de ambiente sem código).

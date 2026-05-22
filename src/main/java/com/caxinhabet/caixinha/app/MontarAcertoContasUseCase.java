@@ -2,6 +2,7 @@ package com.caxinhabet.caixinha.app;
 
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaEntity;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaRepository;
+import com.caxinhabet.caixinha.domain.ConsultaEstadoEstorno;
 import com.caxinhabet.caixinha.domain.ConsultaPayout;
 import com.caxinhabet.caixinha.domain.EstadoCaixinha;
 import com.caxinhabet.participante.adapter.persistence.ParticipanteEntity;
@@ -39,20 +40,25 @@ public class MontarAcertoContasUseCase {
 	private final CaixinhaRepository caixinhas;
 	private final ParticipanteRepository participantes;
 	private final ConsultaPayout consultaPayout;
+	private final ConsultaEstadoEstorno consultaEstadoEstorno;
 
 	public MontarAcertoContasUseCase(
 			CaixinhaRepository caixinhas,
 			ParticipanteRepository participantes,
-			ConsultaPayout consultaPayout) {
+			ConsultaPayout consultaPayout,
+			ConsultaEstadoEstorno consultaEstadoEstorno) {
 		this.caixinhas = caixinhas;
 		this.participantes = participantes;
 		this.consultaPayout = consultaPayout;
+		this.consultaEstadoEstorno = consultaEstadoEstorno;
 	}
 
 	public enum Modo {
 		INDISPONIVEL,
 		PREMIO,
-		REEMBOLSO
+		REEMBOLSO,
+		/** Caixinha cancelada sem nenhum pagamento — não há o que reembolsar. */
+		CANCELADA_SEM_REEMBOLSO
 	}
 
 	/** Um Ganhador no modo prêmio. */
@@ -62,8 +68,18 @@ public class MontarAcertoContasUseCase {
 			ConsultaPayout.EstadoRepasse estadoRepasse,
 			String comprovante) {}
 
-	/** Um Participante reembolsado no modo reembolso. */
-	public record Reembolso(String email, Money valorEstorno) {}
+	/**
+	 * Um Participante reembolsado no modo reembolso.
+	 *
+	 * @param email e-mail do Participante.
+	 * @param valorEstorno ingresso cheio devolvido (Taxa devolvida).
+	 * @param estadoEstorno estado real do estorno no Provedor (Story 5.2)
+	 *     — {@code null} se a cobrança nem foi disparada ainda.
+	 */
+	public record Reembolso(
+			String email,
+			Money valorEstorno,
+			ConsultaEstadoEstorno.EstadoEstorno estadoEstorno) {}
 
 	/** Resultado completo do Acerto de Contas. */
 	public record Resultado(
@@ -100,11 +116,24 @@ public class MontarAcertoContasUseCase {
 		Money totalCustodiado =
 				Money.ofCentavos(caixinha.getValorIngressoCentavos()).times((int) pagos);
 
-		// Caixinha não apurada ainda → modo indisponível.
+		// Caixinha CANCELADA (Story 5.2): se houve pagamentos, é modo
+		// reembolso com o estado real de cada estorno; se não, deixa claro
+		// que não há reembolso a fazer.
+		if (caixinha.getEstado() == EstadoCaixinha.cancelada) {
+			List<Reembolso> reembolsos =
+					montarReembolsos(caixinhaId, todos, caixinha.getValorIngressoCentavos());
+			return new Resultado(
+					reembolsos.isEmpty() ? Modo.CANCELADA_SEM_REEMBOLSO : Modo.REEMBOLSO,
+					caixinha.getEstado(),
+					totalCustodiado,
+					List.of(),
+					reembolsos);
+		}
+
+		// Caixinha ainda não apurada → modo indisponível.
 		if (caixinha.getEstado() == EstadoCaixinha.coletando_convites
 				|| caixinha.getEstado() == EstadoCaixinha.coletando_pagamentos
-				|| caixinha.getEstado() == EstadoCaixinha.formada
-				|| caixinha.getEstado() == EstadoCaixinha.cancelada) {
+				|| caixinha.getEstado() == EstadoCaixinha.formada) {
 			return new Resultado(
 					Modo.INDISPONIVEL,
 					caixinha.getEstado(),
@@ -123,24 +152,12 @@ public class MontarAcertoContasUseCase {
 				todos.stream().anyMatch(p -> p.getStatusVencedor() != null);
 
 		if (!temGanhadores) {
-			List<Reembolso> reembolsos =
-					todos.stream()
-							.filter(p -> p.getStatus() == StatusParticipante.pago)
-							.map(
-									p ->
-											new Reembolso(
-													p.getEmail(),
-													// Taxa devolvida — estorno é o ingresso cheio.
-													Money.ofCentavos(
-															caixinha
-																	.getValorIngressoCentavos())))
-							.toList();
 			return new Resultado(
 					Modo.REEMBOLSO,
 					caixinha.getEstado(),
 					totalCustodiado,
 					List.of(),
-					reembolsos);
+					montarReembolsos(caixinhaId, todos, caixinha.getValorIngressoCentavos()));
 		}
 
 		List<ConsultaPayout.DadosPayout> payouts = consultaPayout.porCaixinha(caixinhaId);
@@ -172,4 +189,27 @@ public class MontarAcertoContasUseCase {
 				ganhadores,
 				List.of());
 	}
+
+	/**
+	 * Monta a lista de reembolsos — um por Participante {@code pago} — com
+	 * o estado real do estorno (Story 5.2). Vazia se ninguém pagou.
+	 */
+	private List<Reembolso> montarReembolsos(
+			long caixinhaId,
+			List<ParticipanteEntity> todos,
+			long valorIngressoCentavos) {
+		Map<Long, ConsultaEstadoEstorno.EstadoEstorno> estados =
+				consultaEstadoEstorno.porCaixinha(caixinhaId);
+		return todos.stream()
+				.filter(p -> p.getStatus() == StatusParticipante.pago)
+				.map(
+						p ->
+								new Reembolso(
+										p.getEmail(),
+										// Taxa devolvida — estorno é o ingresso cheio.
+										Money.ofCentavos(valorIngressoCentavos),
+										estados.get(p.getId())))
+				.toList();
+	}
 }
+

@@ -29,6 +29,9 @@ public class CaixinhaBootGuard {
 		// Story 4.3: notificação "você ganhou" ao Ganhador.
 		assertSender(
 				"caixinha.premio-ganho.sender", props.getPremioGanho().getSender());
+		// Story 5.1: notificação de cancelamento da Caixinha.
+		assertSender(
+				"caixinha.cancelamento.sender", props.getCancelamento().getSender());
 	}
 
 	private static void assertSender(String chave, String sender) {
@@ -46,6 +49,7 @@ public class CaixinhaBootGuard {
 		private MinimoAtingido minimoAtingido = new MinimoAtingido();
 		private Formacao formacao = new Formacao();
 		private PremioGanho premioGanho = new PremioGanho();
+		private Cancelamento cancelamento = new Cancelamento();
 
 		public Convite getConvite() {
 			return convite;
@@ -77,6 +81,14 @@ public class CaixinhaBootGuard {
 
 		public void setPremioGanho(PremioGanho premioGanho) {
 			this.premioGanho = premioGanho;
+		}
+
+		public Cancelamento getCancelamento() {
+			return cancelamento;
+		}
+
+		public void setCancelamento(Cancelamento cancelamento) {
+			this.cancelamento = cancelamento;
 		}
 
 		public static class Convite {
@@ -146,6 +158,28 @@ public class CaixinhaBootGuard {
 
 		/** Story 4.3: aviso "você ganhou" ao Ganhador (FR-13). */
 		public static class PremioGanho {
+			private String sender = "log";
+			private String emailFrom = "caixinha@caixinha.bet";
+
+			public String getSender() {
+				return sender;
+			}
+
+			public void setSender(String sender) {
+				this.sender = sender;
+			}
+
+			public String getEmailFrom() {
+				return emailFrom;
+			}
+
+			public void setEmailFrom(String emailFrom) {
+				this.emailFrom = emailFrom;
+			}
+		}
+
+		/** Story 5.1: aviso de cancelamento da Caixinha (FR-11). */
+		public static class Cancelamento {
 			private String sender = "log";
 			private String emailFrom = "caixinha@caixinha.bet";
 

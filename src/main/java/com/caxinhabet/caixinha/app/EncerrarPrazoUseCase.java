@@ -3,6 +3,7 @@ package com.caxinhabet.caixinha.app;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaEntity;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaRepository;
 import com.caxinhabet.caixinha.domain.ApuracaoInvalidaException;
+import com.caxinhabet.caixinha.domain.DispararReembolso;
 import com.caxinhabet.caixinha.domain.EstadoCaixinha;
 import com.caxinhabet.caixinha.domain.OperacaoNaoAutorizadaException;
 import com.caxinhabet.caixinha.domain.ReavaliarFormacao;
@@ -14,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -46,14 +49,17 @@ public class EncerrarPrazoUseCase {
 	private final CaixinhaRepository caixinhas;
 	private final ParticipanteRepository participantes;
 	private final ReavaliarFormacao reavaliarFormacao;
+	private final DispararReembolso dispararReembolso;
 
 	public EncerrarPrazoUseCase(
 			CaixinhaRepository caixinhas,
 			ParticipanteRepository participantes,
-			ReavaliarFormacao reavaliarFormacao) {
+			ReavaliarFormacao reavaliarFormacao,
+			DispararReembolso dispararReembolso) {
 		this.caixinhas = caixinhas;
 		this.participantes = participantes;
 		this.reavaliarFormacao = reavaliarFormacao;
+		this.dispararReembolso = dispararReembolso;
 	}
 
 	/**
@@ -135,7 +141,7 @@ public class EncerrarPrazoUseCase {
 			return new Resultado(depois, false);
 		}
 
-		// pagos < mínimo — cancela. O Reembolso dos que pagaram é a Story 5.1.
+		// pagos < mínimo — cancela.
 		caixinha.transicionarPara(EstadoCaixinha.cancelada);
 		caixinhas.save(caixinha);
 		log.info(
@@ -143,6 +149,25 @@ public class EncerrarPrazoUseCase {
 				caixinha.getId(),
 				pagos,
 				caixinha.getMinimoParticipantes());
-		return new Resultado(EstadoCaixinha.cancelada, pagos > 0);
+
+		// Story 5.1 (FR-11): se há Participantes que pagaram, dispara o
+		// Reembolso automático — APÓS O COMMIT (fix code review Épico 5).
+		// O `dispararReembolso` chama `provedor.estornar` (rede ao Asaas);
+		// rodar isso dentro desta transação arriscaria mandar dinheiro de
+		// volta e depois a transação reverter, deixando a Caixinha
+		// não-cancelada. O `afterCommit` garante que o estorno só dispara
+		// quando o cancelamento já está persistido.
+		boolean houvePagantes = pagos > 0;
+		if (houvePagantes) {
+			long caixinhaId = caixinha.getId();
+			TransactionSynchronizationManager.registerSynchronization(
+					new TransactionSynchronization() {
+						@Override
+						public void afterCommit() {
+							dispararReembolso.dispararReembolso(caixinhaId);
+						}
+					});
+		}
+		return new Resultado(EstadoCaixinha.cancelada, houvePagantes);
 	}
 }
