@@ -1,6 +1,7 @@
 package com.caxinhabet.participante.adapter.persistence;
 
 import com.caxinhabet.participante.domain.StatusParticipante;
+import com.caxinhabet.participante.domain.StatusVencedor;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -55,6 +56,15 @@ public class ParticipanteEntity {
 	 */
 	@Column
 	private Long palpiteResultadoPossivelId;
+
+	/**
+	 * Sub-estado de Ganhador (Épico 4 v5, Story 4.2). NULLABLE — null = este
+	 * Participante NÃO é Ganhador. Preenchido na apuração quando o
+	 * Organizador o seleciona; evolui no Repasse (Story 4.6).
+	 */
+	@Enumerated(EnumType.STRING)
+	@Column(name = "status_vencedor", length = 32)
+	private StatusVencedor statusVencedor;
 
 	protected ParticipanteEntity() {
 		// JPA.
@@ -122,5 +132,23 @@ public class ParticipanteEntity {
 	/** Story 2.5: transições de status (convidado → aceito, etc.). */
 	public void setStatus(StatusParticipante status) {
 		this.status = status;
+	}
+
+	/** Sub-estado de Ganhador (Épico 4). {@code null} = não é Ganhador. */
+	public StatusVencedor getStatusVencedor() {
+		return statusVencedor;
+	}
+
+	/**
+	 * Story 4.2 (FR-12): marca este Participante como Ganhador, entrando em
+	 * {@code vencedor_aguardando_aceite}. Story 4.6 evolui daqui.
+	 */
+	public void marcarComoVencedor() {
+		this.statusVencedor = StatusVencedor.vencedor_aguardando_aceite;
+	}
+
+	/** Épico 4: transição do sub-estado de Repasse (Story 4.6). */
+	public void setStatusVencedor(StatusVencedor statusVencedor) {
+		this.statusVencedor = statusVencedor;
 	}
 }

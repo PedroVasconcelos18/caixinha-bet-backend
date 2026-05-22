@@ -62,6 +62,14 @@ public class CobrancaEntity {
 	@Column(nullable = false)
 	private Instant criadoEm;
 
+	/**
+	 * Instante em que a cobrança foi CONFIRMADA pelo webhook do Asaas
+	 * (Épico 4 v5, Story 4.3). NULLABLE — null enquanto não confirmada.
+	 * É a "ordem de pagamento" usada para o resíduo de centavos do Prêmio.
+	 */
+	@Column(name = "confirmada_em")
+	private Instant confirmadaEm;
+
 	protected CobrancaEntity() {
 		// JPA.
 	}
@@ -125,13 +133,25 @@ public class CobrancaEntity {
 		return criadoEm;
 	}
 
+	/** Instante da confirmação ({@code null} se ainda não confirmada). */
+	public Instant getConfirmadaEm() {
+		return confirmadaEm;
+	}
+
 	/**
 	 * Transiciona o estado da cobrança (Story 3.2). Setter cru não é
 	 * exposto — toda mutação de estado entra por aqui.
+	 *
+	 * <p>Ao transicionar para {@link EstadoCobranca#confirmada}, registra
+	 * {@code confirmadaEm} (Épico 4 — ordem de pagamento para o resíduo
+	 * do Prêmio), se ainda não estava registrada.
 	 */
 	public void transicionarPara(EstadoCobranca novo) {
 		if (novo == null) {
 			throw new IllegalArgumentException("estado-alvo não pode ser null");
+		}
+		if (novo == EstadoCobranca.confirmada && this.confirmadaEm == null) {
+			this.confirmadaEm = Instant.now();
 		}
 		this.estado = novo;
 	}

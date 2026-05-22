@@ -69,6 +69,15 @@ public class CaixinhaEntity {
 	@Column(nullable = false)
 	private Long organizadorUsuarioId;
 
+	/**
+	 * Resultado Final escolhido na apuração (Épico 4 v5, Story 4.2).
+	 * NULLABLE — null até a apuração. Após `apurada` é IMUTÁVEL (o use case
+	 * de apuração rejeita re-apuração). É o id de um {@code resultado_possivel}
+	 * desta Caixinha.
+	 */
+	@Column(name = "resultado_final_id")
+	private Long resultadoFinalId;
+
 	@Column(nullable = false)
 	private Instant criadoEm;
 
@@ -168,6 +177,20 @@ public class CaixinhaEntity {
 
 	public Long getOrganizadorUsuarioId() {
 		return organizadorUsuarioId;
+	}
+
+	/** Resultado Final da apuração (Épico 4). {@code null} se não apurada. */
+	public Long getResultadoFinalId() {
+		return resultadoFinalId;
+	}
+
+	/**
+	 * Story 4.2 (FR-12): registra o Resultado Final escolhido na apuração.
+	 * Chamado uma única vez, na transição para {@code apurada} — o use case
+	 * de apuração garante que não há re-apuração.
+	 */
+	public void registrarResultadoFinal(long resultadoFinalId) {
+		this.resultadoFinalId = resultadoFinalId;
 	}
 
 	public Instant getCriadoEm() {

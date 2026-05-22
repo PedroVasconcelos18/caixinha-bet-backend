@@ -182,16 +182,119 @@ class AsaasProvedorPagamentoAdapter implements ProvedorPagamento {
 				"estornar() implementado no Épico 3/5 (FR-11). Story 1.4 = gate-only.");
 	}
 
+	/**
+	 * Dispara uma transferência PIX no Asaas: {@code POST /transfers} com
+	 * {@code value}, {@code pixAddressKey} (a chave do Ganhador) e
+	 * {@code externalReference=<payoutId>} (Épico 4 v5, Story 4.6, FR-13).
+	 *
+	 * <p><b>Idempotência por {@code payoutId}:</b> antes de criar, consulta
+	 * {@code GET /transfers?externalReference=<payoutId>}. Se já existe uma
+	 * transferência com esse {@code payoutId}, devolve-a — não cria uma
+	 * segunda (múltiplos toques no botão "aceitar" não duplicam o PIX).
+	 *
+	 * <p>O endpoint {@code /transfers} é relativo (sem {@code /v3}) — o
+	 * {@code /api/v3} já está na base-url.
+	 */
 	@Override
 	public ResultadoTransferencia transferir(Ganhador ganhador) {
-		throw new UnsupportedOperationException(
-				"transferir() implementado no Épico 4 (FR-13 v5). Story 1.4 v5 = gate-only.");
+		// Idempotência: já existe transferência para este payoutId?
+		@SuppressWarnings("unchecked")
+		Map<String, Object> existentes =
+				http.get()
+						.uri(
+								"/transfers?externalReference={ref}",
+								ganhador.payoutId())
+						.retrieve()
+						.body(Map.class);
+		ResultadoTransferencia jaExiste = primeiraTransferencia(existentes);
+		if (jaExiste != null) {
+			return jaExiste;
+		}
+
+		Map<String, Object> payload =
+				Map.of(
+						"value", ganhador.valor().toString(), // string decimal (AR-8)
+						"pixAddressKey", ganhador.chavePix(),
+						"externalReference", ganhador.payoutId(),
+						"operationType", "PIX");
+
+		@SuppressWarnings("unchecked")
+		Map<String, Object> transferencia =
+				http.post().uri("/transfers").body(payload).retrieve().body(Map.class);
+
+		if (transferencia == null || transferencia.get("id") == null) {
+			throw new IllegalStateException(
+					"Asaas não retornou id da transferência (payout "
+							+ ganhador.payoutId()
+							+ ")");
+		}
+		return new ResultadoTransferencia(
+				String.valueOf(transferencia.get("id")),
+				traduzirTransferencia(str(transferencia.get("status"))),
+				null);
 	}
 
+	/**
+	 * Consulta o status de uma transferência: {@code GET /transfers/{id}}
+	 * (Épico 4 v5, Story 4.6 — polling de confirmação / reconciliação).
+	 */
 	@Override
 	public ResultadoTransferencia consultarTransferencia(String transferenciaId) {
-		throw new UnsupportedOperationException(
-				"consultarTransferencia() implementado no Épico 4 (FR-13 v5). Story 1.4 v5 = gate-only.");
+		@SuppressWarnings("unchecked")
+		Map<String, Object> t =
+				http.get()
+						.uri("/transfers/{id}", transferenciaId)
+						.retrieve()
+						.body(Map.class);
+		if (t == null || t.get("status") == null) {
+			throw new IllegalStateException(
+					"Asaas não retornou status da transferência " + transferenciaId);
+		}
+		return new ResultadoTransferencia(
+				transferenciaId, traduzirTransferencia(str(t.get("status"))), null);
+	}
+
+	/** Extrai a 1ª transferência de uma resposta paginada do Asaas (ou null). */
+	private static ResultadoTransferencia primeiraTransferencia(
+			Map<String, Object> resposta) {
+		if (resposta == null) {
+			return null;
+		}
+		Object data = resposta.get("data");
+		if (data instanceof java.util.List<?> lista && !lista.isEmpty()) {
+			Object item = lista.get(0);
+			if (item instanceof Map<?, ?> m && m.get("id") != null) {
+				return new ResultadoTransferencia(
+						String.valueOf(m.get("id")),
+						traduzirTransferencia(str(m.get("status"))),
+						null);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Tradução do {@code status} de transferência do Asaas → domínio.
+	 * Asaas: {@code PENDING}/{@code BANK_PROCESSING} → PENDENTE;
+	 * {@code DONE} → CONCLUIDA; {@code FAILED}/{@code CANCELLED} → FALHA.
+	 * Pacote-visível para teste.
+	 */
+	static ResultadoTransferencia.StatusTransferencia traduzirTransferencia(
+			String statusAsaas) {
+		if (statusAsaas == null) {
+			return ResultadoTransferencia.StatusTransferencia.PENDENTE;
+		}
+		return switch (statusAsaas) {
+			case "DONE" -> ResultadoTransferencia.StatusTransferencia.CONCLUIDA;
+			case "FAILED", "CANCELLED" ->
+					ResultadoTransferencia.StatusTransferencia.FALHA;
+			default -> ResultadoTransferencia.StatusTransferencia.PENDENTE;
+		};
+	}
+
+	/** {@code String.valueOf} null-safe (devolve {@code null} para entrada nula). */
+	private static String str(Object o) {
+		return o == null ? null : String.valueOf(o);
 	}
 
 	private static String nullSafe(String s) {

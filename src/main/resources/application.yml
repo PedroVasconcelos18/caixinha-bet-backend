@@ -99,6 +99,10 @@ caixinha:
   reconciliacao:
     intervalo-ms: ${CAIXINHA_RECONCILIACAO_INTERVALO_MS:300000}
     atraso-inicial-ms: ${CAIXINHA_RECONCILIACAO_ATRASO_INICIAL_MS:60000}
+  # Story 4.3: aviso "você ganhou" ao Ganhador no momento da apuração.
+  premio-ganho:
+    sender: ${CAIXINHA_PREMIO_GANHO_SENDER:log}
+    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
 
 # Configuração do PSP (Story 1.4).
 # Sandbox por default (R-7 mitigação: trocabilidade de ambiente sem código).

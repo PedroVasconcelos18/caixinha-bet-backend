@@ -4,6 +4,7 @@ import com.caxinhabet.auth.domain.AcessoExpiradoException;
 import com.caxinhabet.auth.domain.AcessoJaConsumidoException;
 import com.caxinhabet.auth.domain.ChavePixObrigatoriaException;
 import com.caxinhabet.auth.domain.TokenInvalidoException;
+import com.caxinhabet.caixinha.domain.ApuracaoInvalidaException;
 import com.caxinhabet.caixinha.domain.CriacaoCaixinhaInvalidaException;
 import com.caxinhabet.caixinha.domain.OperacaoNaoAutorizadaException;
 import com.caxinhabet.caixinha.domain.PagamentoIndisponivelException;
@@ -71,6 +72,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final URI TYPE_PAGAMENTO_INDISPONIVEL =
 			URI.create("https://caixinha.bet/problems/pagamento-indisponivel");
+
+	private static final URI TYPE_APURACAO_INVALIDA =
+			URI.create("https://caixinha.bet/problems/apuracao-invalida");
 
 	@ExceptionHandler(Exception.class)
 	public ProblemDetail handleUncaught(Exception ex) {
@@ -197,6 +201,27 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 						HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
 		problem.setType(TYPE_PAGAMENTO_INDISPONIVEL);
 		problem.setTitle("Pagamento indisponível");
+		return problem;
+	}
+
+	/**
+	 * Apuração inválida (Story 4.2, FR-12): estado da Caixinha incompatível
+	 * (não está {@code formada}, ou já apurada — imutabilidade), Resultado
+	 * Final que não pertence à Caixinha, ou seleção de Ganhadores ausente/
+	 * incorreta quando há mais palpiteiros corretos que o Nº de Ganhadores.
+	 */
+	@ExceptionHandler(ApuracaoInvalidaException.class)
+	public ProblemDetail handleApuracaoInvalida(ApuracaoInvalidaException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(
+						HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+		problem.setType(TYPE_APURACAO_INVALIDA);
+		problem.setTitle("Apuração inválida");
+		// Caso "mais palpiteiros corretos que vagas": expõe os candidatos
+		// (extensão RFC 9457 §3.2) para o front montar a tela de seleção.
+		if (!ex.candidatos().isEmpty()) {
+			problem.setProperty("candidatos", ex.candidatos());
+		}
 		return problem;
 	}
 }

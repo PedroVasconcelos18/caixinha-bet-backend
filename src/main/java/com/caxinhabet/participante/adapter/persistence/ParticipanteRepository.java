@@ -25,4 +25,13 @@ public interface ParticipanteRepository extends JpaRepository<ParticipanteEntity
 	 */
 	long countByCaixinhaIdAndStatusIn(
 			long caixinhaId, Collection<StatusParticipante> status);
+
+	/**
+	 * Story 4.2 (FR-12): Participantes de uma Caixinha num dado status,
+	 * em ordem cronológica de entrada. A apuração usa com {@code pago}
+	 * para achar os palpiteiros (e a ordem serve de base para o resíduo
+	 * de centavos — Story 4.3 refina pela confirmação da cobrança).
+	 */
+	List<ParticipanteEntity> findByCaixinhaIdAndStatusOrderByCriadoEmAsc(
+			long caixinhaId, StatusParticipante status);
 }

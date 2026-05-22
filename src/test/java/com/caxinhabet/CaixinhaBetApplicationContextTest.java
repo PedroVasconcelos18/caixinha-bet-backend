@@ -9,6 +9,7 @@ import com.caxinhabet.caixinha.adapter.persistence.ResultadoPossivelRepository;
 import com.caxinhabet.ledger.adapter.persistence.LedgerLancamentoRepository;
 import com.caxinhabet.pagamento.adapter.persistence.CobrancaRepository;
 import com.caxinhabet.pagamento.adapter.persistence.PagamentoEventoRepository;
+import com.caxinhabet.pagamento.adapter.persistence.PayoutRepository;
 import com.caxinhabet.participante.adapter.persistence.ParticipanteRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,15 @@ class CaixinhaBetApplicationContextTest {
 
 	// Story 3.3: ledger de dupla entrada.
 	@MockitoBean private LedgerLancamentoRepository ledgerLancamentoRepository;
+
+	// Story 4.3: agregado Payout (Repasse do prêmio).
+	@MockitoBean private PayoutRepository payoutRepository;
+
+	// Story 4.6: o PlatformTransactionManager vem do JPA/DataSource (aqui
+	// excluído); o TransactionTemplate do AceitarPremioUseCase depende dele.
+	@MockitoBean
+	private org.springframework.transaction.PlatformTransactionManager
+			platformTransactionManager;
 
 	@Test
 	@DisplayName("O contexto Spring sobe sem erro a partir de CaixinhaBetApplication")

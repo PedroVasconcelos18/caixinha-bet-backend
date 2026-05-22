@@ -28,6 +28,8 @@ public class LedgerService {
 	private static final String CONTA_EXPECTATIVA = "expectativa";
 	private static final String CONTA_A_RECEBER = "a_receber";
 	private static final String CONTA_CUSTODIA = "custodia";
+	private static final String CONTA_RESERVADO = "reservado";
+	private static final String CONTA_REPASSADO = "repassado";
 	private static final String CONTA_ESTORNO = "estorno";
 
 	private static final String DEBITO = "debito";
@@ -124,6 +126,60 @@ public class LedgerService {
 				caixinhaId,
 				participanteId,
 				cobrancaId,
+				eventoRef);
+	}
+
+	/**
+	 * Registra a RESERVA do prêmio de um Ganhador (Épico 4 v5, Story 4.3).
+	 *
+	 * <p>Par de lançamentos: débito em {@code custodia} (o valor sai do
+	 * bolo custodiado comum), crédito em {@code reservado} (passa a estar
+	 * reservado para este Ganhador específico). O disparo do PIX (Story
+	 * 4.6) debitará {@code reservado} na saída.
+	 *
+	 * <p>A Taxa de Serviço NÃO é reservada — fica em {@code custodia}.
+	 *
+	 * @param eventoRef referência de auditoria — aqui o {@code payout_id}.
+	 */
+	public void registrarReservaPremio(
+			long caixinhaId,
+			long participanteId,
+			Money valor,
+			String eventoRef) {
+		gravarPar(
+				UUID.randomUUID(),
+				CONTA_CUSTODIA,
+				CONTA_RESERVADO,
+				valor,
+				caixinhaId,
+				participanteId,
+				null,
+				eventoRef);
+	}
+
+	/**
+	 * Registra a SAÍDA do prêmio — o PIX confirmado ao Ganhador
+	 * (Épico 4 v5, Story 4.6, FR-13).
+	 *
+	 * <p>Par de lançamentos: débito em {@code reservado} (o valor sai da
+	 * reserva do Ganhador), crédito em {@code repassado} (saiu da
+	 * plataforma via PIX). Fecha o ciclo de vida do dinheiro do prêmio.
+	 *
+	 * @param eventoRef referência de auditoria — aqui o {@code payout_id}.
+	 */
+	public void registrarSaidaPremio(
+			long caixinhaId,
+			long participanteId,
+			Money valor,
+			String eventoRef) {
+		gravarPar(
+				UUID.randomUUID(),
+				CONTA_RESERVADO,
+				CONTA_REPASSADO,
+				valor,
+				caixinhaId,
+				participanteId,
+				null,
 				eventoRef);
 	}
 

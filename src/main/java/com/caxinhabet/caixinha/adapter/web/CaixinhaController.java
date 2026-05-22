@@ -7,10 +7,13 @@ import com.caxinhabet.caixinha.adapter.persistence.CaixinhaRepository;
 import com.caxinhabet.caixinha.adapter.persistence.ResultadoPossivelEntity;
 import com.caxinhabet.caixinha.adapter.persistence.ResultadoPossivelRepository;
 import com.caxinhabet.caixinha.app.AceitarConviteUseCase;
+import com.caxinhabet.caixinha.app.ApurarCaixinhaUseCase;
 import com.caxinhabet.caixinha.app.BuscarConviteUseCase;
 import com.caxinhabet.caixinha.app.CriarCaixinhaUseCase;
 import com.caxinhabet.caixinha.app.DefinirPalpiteUseCase;
+import com.caxinhabet.caixinha.app.EncerrarPrazoUseCase;
 import com.caxinhabet.caixinha.app.EnviarConvitesUseCase;
+import com.caxinhabet.caixinha.app.MontarAcertoContasUseCase;
 import com.caxinhabet.caixinha.domain.Caixinha;
 import com.caxinhabet.caixinha.domain.NovaCaixinhaSpec;
 import com.caxinhabet.caixinha.domain.ResultadoPossivel;
@@ -54,6 +57,10 @@ class CaixinhaController {
 	private final BuscarConviteUseCase buscarConvite;
 	private final AceitarConviteUseCase aceitarConvite;
 	private final DefinirPalpiteUseCase definirPalpite;
+	private final ApurarCaixinhaUseCase apurarCaixinha;
+	private final MontarAcertoContasUseCase montarAcertoContas;
+	private final EncerrarPrazoUseCase encerrarPrazo;
+	private final com.caxinhabet.pagamento.app.AceitarPremioUseCase aceitarPremio;
 	private final CaixinhaRepository caixinhas;
 	private final ResultadoPossivelRepository resultados;
 	private final ParticipanteRepository participantes;
@@ -66,6 +73,10 @@ class CaixinhaController {
 			BuscarConviteUseCase buscarConvite,
 			AceitarConviteUseCase aceitarConvite,
 			DefinirPalpiteUseCase definirPalpite,
+			ApurarCaixinhaUseCase apurarCaixinha,
+			MontarAcertoContasUseCase montarAcertoContas,
+			EncerrarPrazoUseCase encerrarPrazo,
+			com.caxinhabet.pagamento.app.AceitarPremioUseCase aceitarPremio,
 			CaixinhaRepository caixinhas,
 			ResultadoPossivelRepository resultados,
 			ParticipanteRepository participantes,
@@ -77,6 +88,10 @@ class CaixinhaController {
 		this.expirarCobranca = expirarCobranca;
 		this.aceitarConvite = aceitarConvite;
 		this.definirPalpite = definirPalpite;
+		this.apurarCaixinha = apurarCaixinha;
+		this.montarAcertoContas = montarAcertoContas;
+		this.encerrarPrazo = encerrarPrazo;
+		this.aceitarPremio = aceitarPremio;
 		this.caixinhas = caixinhas;
 		this.resultados = resultados;
 		this.participantes = participantes;
@@ -211,6 +226,57 @@ class CaixinhaController {
 				definirPalpite.executar(
 						id, usuarioId, auth.getName(), req.resultadoPossivelId());
 		return ResponseEntity.ok(ParticipanteResponse.de(p));
+	}
+
+	// ---------- Story 4.2: apuração (FR-12) ----------
+
+	@PostMapping("/{id}/apuracao")
+	ResponseEntity<ApuracaoResponse> apurar(
+			@PathVariable Long id,
+			@Valid @RequestBody ApurarCaixinhaRequest req,
+			Authentication auth) {
+		Long organizadorUsuarioId = resolverUsuarioId(auth);
+		ApurarCaixinhaUseCase.Resultado r =
+				apurarCaixinha.executar(
+						id,
+						organizadorUsuarioId,
+						auth.getName(),
+						req.resultadoFinalId(),
+						req.ganhadoresEscolhidos());
+		return ResponseEntity.ok(ApuracaoResponse.de(r));
+	}
+
+	// ---------- Story 4.4: Acerto de Contas (FR-14) ----------
+
+	@GetMapping("/{id}/acerto")
+	ResponseEntity<AcertoContasResponse> acertoContas(
+			@PathVariable Long id, Authentication auth) {
+		resolverUsuarioId(auth); // 401 se não autenticado
+		MontarAcertoContasUseCase.Resultado r =
+				montarAcertoContas.executar(id, auth.getName());
+		return ResponseEntity.ok(AcertoContasResponse.de(r));
+	}
+
+	// ---------- Story 4.5: encerrar prazo manualmente (FR-15) ----------
+
+	@PostMapping("/{id}/encerrar-prazo")
+	ResponseEntity<EncerrarPrazoResponse> encerrarPrazoEntrada(
+			@PathVariable Long id, Authentication auth) {
+		Long usuarioId = resolverUsuarioId(auth);
+		EncerrarPrazoUseCase.Resultado r =
+				encerrarPrazo.executar(id, usuarioId, auth.getName());
+		return ResponseEntity.ok(EncerrarPrazoResponse.de(r));
+	}
+
+	// ---------- Story 4.6: Ganhador aceita o prêmio (FR-13) ----------
+
+	@PostMapping("/{id}/aceitar-premio")
+	ResponseEntity<AceitarPremioResponse> aceitarPremio(
+			@PathVariable Long id, Authentication auth) {
+		Long usuarioId = resolverUsuarioId(auth);
+		com.caxinhabet.pagamento.app.AceitarPremioUseCase.Resultado r =
+				aceitarPremio.executar(id, usuarioId, auth.getName());
+		return ResponseEntity.ok(AceitarPremioResponse.de(r));
 	}
 
 	private Long resolverUsuarioId(Authentication auth) {
