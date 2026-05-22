@@ -58,6 +58,7 @@ class CaixinhaController {
 	private final ResultadoPossivelRepository resultados;
 	private final ParticipanteRepository participantes;
 	private final UsuarioRepository usuarios;
+	private final com.caxinhabet.pagamento.app.ExpirarCobrancaService expirarCobranca;
 
 	CaixinhaController(
 			CriarCaixinhaUseCase criar,
@@ -68,10 +69,12 @@ class CaixinhaController {
 			CaixinhaRepository caixinhas,
 			ResultadoPossivelRepository resultados,
 			ParticipanteRepository participantes,
-			UsuarioRepository usuarios) {
+			UsuarioRepository usuarios,
+			com.caxinhabet.pagamento.app.ExpirarCobrancaService expirarCobranca) {
 		this.criar = criar;
 		this.enviarConvites = enviarConvites;
 		this.buscarConvite = buscarConvite;
+		this.expirarCobranca = expirarCobranca;
 		this.aceitarConvite = aceitarConvite;
 		this.definirPalpite = definirPalpite;
 		this.caixinhas = caixinhas;
@@ -92,6 +95,7 @@ class CaixinhaController {
 						req.ladoB(),
 						req.valorIngresso(),
 						req.minimoParticipantes(),
+						req.numeroGanhadores(),
 						req.prazoEntrada(),
 						req.dataApuracao(),
 						req.rotulosResultados(),
@@ -123,12 +127,17 @@ class CaixinhaController {
 												"Caixinha não encontrada."));
 
 		// Anti-enumeração: só participantes podem ver. Não-participante → 404.
-		boolean ehParticipante =
-				participantes.findByCaixinhaIdAndEmail(entity.getId(), auth.getName()).isPresent();
-		if (!ehParticipante) {
+		var participanteOpt =
+				participantes.findByCaixinhaIdAndEmail(entity.getId(), auth.getName());
+		if (participanteOpt.isEmpty()) {
 			throw new ResponseStatusException(
 					org.springframework.http.HttpStatus.NOT_FOUND, "Caixinha não encontrada.");
 		}
+
+		// Story 3.2 (FR-7): expiração lazy — se o Participante que está
+		// consultando tem uma cobrança vencida, expira-a agora (volta a
+		// `aceito`) antes de montar a resposta. Sem scheduler.
+		expirarCobranca.expirarSeVencida(participanteOpt.get().getId());
 
 		List<ResultadoPossivelEntity> resultadosEntidades =
 				resultados.findByCaixinhaIdOrderByOrdemAsc(entity.getId());
@@ -150,6 +159,7 @@ class CaixinhaController {
 						entity.getLadoB(),
 						Money.ofCentavos(entity.getValorIngressoCentavos()),
 						entity.getMinimoParticipantes(),
+						entity.getNumeroGanhadores(),
 						entity.getPrazoEntrada(),
 						entity.getDataApuracao(),
 						entity.getEstado(),

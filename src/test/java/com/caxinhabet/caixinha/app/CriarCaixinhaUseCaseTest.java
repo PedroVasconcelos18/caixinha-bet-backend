@@ -74,6 +74,7 @@ class CriarCaixinhaUseCaseTest {
 				"Marrocos",
 				Money.of("40.00"),
 				5,
+				1, // numeroGanhadores (v5)
 				PRAZO,
 				APURACAO,
 				List.of("Vitória do Brasil", "Empate", "Vitória do Marrocos"),
@@ -121,6 +122,7 @@ class CriarCaixinhaUseCaseTest {
 						"B",
 						Money.of("1.00"),
 						1,
+						0, // numeroGanhadores inválido (v5)
 						APURACAO,
 						PRAZO,
 						List.of("X"),
@@ -153,6 +155,7 @@ class CriarCaixinhaUseCaseTest {
 						"Marrocos",
 						Money.of("40.00"),
 						5,
+						1, // numeroGanhadores (v5)
 						PRAZO,
 						APURACAO,
 						List.of("V Brasil", "Empate", "V Marrocos"),

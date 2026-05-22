@@ -1,5 +1,8 @@
 package com.caxinhabet.caixinha.app;
 
+import com.caxinhabet.auth.adapter.persistence.UsuarioEntity;
+import com.caxinhabet.auth.adapter.persistence.UsuarioRepository;
+import com.caxinhabet.auth.domain.ChavePixObrigatoriaException;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaEntity;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaRepository;
 import com.caxinhabet.caixinha.adapter.persistence.ResultadoPossivelEntity;
@@ -37,14 +40,20 @@ public class DefinirPalpiteUseCase {
 	private final CaixinhaRepository caixinhas;
 	private final ParticipanteRepository participantes;
 	private final ResultadoPossivelRepository resultados;
+	private final UsuarioRepository usuarios;
+	private final AvaliarTransicaoAceitesService avaliarTransicao;
 
 	public DefinirPalpiteUseCase(
 			CaixinhaRepository caixinhas,
 			ParticipanteRepository participantes,
-			ResultadoPossivelRepository resultados) {
+			ResultadoPossivelRepository resultados,
+			UsuarioRepository usuarios,
+			AvaliarTransicaoAceitesService avaliarTransicao) {
 		this.caixinhas = caixinhas;
 		this.participantes = participantes;
 		this.resultados = resultados;
+		this.usuarios = usuarios;
+		this.avaliarTransicao = avaliarTransicao;
 	}
 
 	@Transactional
@@ -79,6 +88,21 @@ public class DefinirPalpiteUseCase {
 							+ ").");
 		}
 
+		// 3.5. (v5 FR-5) chave PIX no perfil do Usuário é pré-requisito.
+		// Sem ela, não dá pra disparar payout depois (FR-13) — recusamos cedo.
+		UsuarioEntity usuario =
+				usuarios
+						.findById(usuarioId)
+						.orElseThrow(
+								() ->
+										new ResponseStatusException(
+												HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+		String chave = usuario.getChavePix();
+		if (chave == null || chave.isBlank()) {
+			throw new ChavePixObrigatoriaException(
+					"Cadastre sua chave PIX no perfil antes de palpitar.");
+		}
+
 		// 4. Resultado precisa existir E pertencer a esta Caixinha
 		ResultadoPossivelEntity resultado =
 				resultados
@@ -98,13 +122,23 @@ public class DefinirPalpiteUseCase {
 		}
 
 		// 6. Aceite implícito (UX: escolher palpite = aceitar)
-		if (participante.getStatus() == StatusParticipante.convidado) {
+		boolean houveTransicaoAceite =
+				participante.getStatus() == StatusParticipante.convidado;
+		if (houveTransicaoAceite) {
 			participante.setStatus(StatusParticipante.aceito);
 		}
 
 		// 7. Grava palpite (idempotente — UPDATE com mesmo valor é OK)
 		participante.setPalpiteResultadoPossivelId(resultadoPossivelId);
+		ParticipanteEntity salvo = participantes.save(participante);
 
-		return participantes.save(participante);
+		// 8. Story 3.1 (FR-6): se houve aceite implícito agora, reavalia
+		// Mínimo de Aceites e (se atingido) transiciona Caixinha para
+		// coletando_pagamentos na MESMA transação.
+		if (houveTransicaoAceite) {
+			avaliarTransicao.avaliar(caixinha);
+		}
+
+		return salvo;
 	}
 }

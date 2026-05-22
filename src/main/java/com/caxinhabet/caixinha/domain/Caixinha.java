@@ -30,6 +30,7 @@ public record Caixinha(
 		String ladoB,
 		Money valorIngresso,
 		int minimoParticipantes,
+		int numeroGanhadores,
 		Instant prazoEntrada,
 		Instant dataApuracao,
 		EstadoCaixinha estado,
@@ -42,6 +43,9 @@ public record Caixinha(
 
 	/** Valor mínimo do ingresso — regra Asaas (Story 1.5, R$ 5,00). */
 	public static final Money INGRESSO_MINIMO = Money.of("5.00");
+
+	/** Nº de Ganhadores máximo no wizard — PRD §3 v5 (FR-1 v5). */
+	public static final int MAX_GANHADORES = 3;
 
 	public Caixinha {
 		if (titulo == null || titulo.isBlank()) {
@@ -71,6 +75,15 @@ public record Caixinha(
 		}
 		if (minimoParticipantes < 2) {
 			throw new IllegalArgumentException("minimoParticipantes deve ser >= 2");
+		}
+		// FR-1 v5: Nº de Ganhadores (1, 2 ou 3) e ≤ minimoParticipantes.
+		if (numeroGanhadores < 1 || numeroGanhadores > MAX_GANHADORES) {
+			throw new IllegalArgumentException(
+					"numeroGanhadores deve estar entre 1 e " + MAX_GANHADORES);
+		}
+		if (numeroGanhadores > minimoParticipantes) {
+			throw new IllegalArgumentException(
+					"numeroGanhadores não pode ser maior que minimoParticipantes");
 		}
 		if (prazoEntrada == null) {
 			throw new IllegalArgumentException("prazoEntrada é obrigatório");

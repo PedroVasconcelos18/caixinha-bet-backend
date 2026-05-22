@@ -87,6 +87,7 @@ class EnviarConvitesUseCaseTest {
 						"Marrocos",
 						4000L,
 						5,
+						1, // numeroGanhadores (v5)
 						prazoEntrada,
 						prazoEntrada.plusSeconds(3600),
 						EstadoCaixinha.coletando_convites,

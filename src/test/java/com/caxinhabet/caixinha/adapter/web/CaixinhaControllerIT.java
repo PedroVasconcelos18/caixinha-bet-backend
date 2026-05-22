@@ -91,6 +91,7 @@ class CaixinhaControllerIT {
 					+ "\"ladoB\":\"Marrocos\","
 					+ "\"valorIngresso\":\"40.00\","
 					+ "\"minimoParticipantes\":5,"
+					+ "\"numeroGanhadores\":1," // v5 FR-1
 					+ "\"prazoEntrada\":\"2026-06-01T12:00:00Z\","
 					+ "\"dataApuracao\":\"2026-06-01T14:00:00Z\","
 					+ "\"rotulosResultados\":[\"Vitória do Brasil\",\"Empate\",\"Vitória do Marrocos\"],"
@@ -438,7 +439,7 @@ class CaixinhaControllerIT {
 
 	private static final String JSON_OK_COM_CONVIDADO =
 			"{\"titulo\":\"Brasil x Marrocos\",\"ladoA\":\"Brasil\",\"ladoB\":\"Marrocos\","
-					+ "\"valorIngresso\":\"40.00\",\"minimoParticipantes\":3,"
+					+ "\"valorIngresso\":\"40.00\",\"minimoParticipantes\":3,\"numeroGanhadores\":1,"
 					+ "\"prazoEntrada\":\"2027-06-01T12:00:00Z\",\"dataApuracao\":\"2027-06-01T14:00:00Z\","
 					+ "\"rotulosResultados\":[\"V Brasil\",\"Empate\",\"V Marrocos\"],"
 					+ "\"emailsConvidados\":[\"alice@local\"]}";

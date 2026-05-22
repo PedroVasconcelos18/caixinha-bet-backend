@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.caxinhabet.auth.adapter.persistence.UsuarioEntity;
 import com.caxinhabet.auth.adapter.persistence.UsuarioRepository;
+import com.caxinhabet.auth.domain.ChavePixObrigatoriaException;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaEntity;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaRepository;
 import com.caxinhabet.caixinha.adapter.persistence.ResultadoPossivelEntity;
@@ -61,6 +62,11 @@ class DefinirPalpiteUseCaseTest {
 		usuarios.deleteAll();
 
 		alice = usuarios.save(UsuarioEntity.criar("alice@local"));
+		// v5 (FR-5): chave PIX no perfil é pré-requisito do Palpite.
+		// O setUp default cadastra; testes específicos podem limpar para
+		// exercitar o cenário "sem chave".
+		alice.definirChavePix("alice@pix");
+		alice = usuarios.save(alice);
 		UsuarioEntity rafael = usuarios.save(UsuarioEntity.criar("rafael@local"));
 		caixinha =
 				caixinhas.save(
@@ -70,6 +76,7 @@ class DefinirPalpiteUseCaseTest {
 								"Marrocos",
 								4000L,
 								3,
+								1, // numeroGanhadores (v5)
 								Instant.now().plusSeconds(86400 * 30),
 								Instant.now().plusSeconds(86400 * 30 + 3600),
 								EstadoCaixinha.coletando_convites,
@@ -121,6 +128,7 @@ class DefinirPalpiteUseCaseTest {
 								"Y",
 								4000L,
 								2,
+								1, // numeroGanhadores (v5)
 								Instant.now().plusSeconds(3600),
 								Instant.now().plusSeconds(7200),
 								EstadoCaixinha.coletando_convites,
@@ -161,6 +169,7 @@ class DefinirPalpiteUseCaseTest {
 								"B",
 								4000L,
 								2,
+								1, // numeroGanhadores (v5)
 								Instant.now().minusSeconds(3600),
 								Instant.now().minusSeconds(1800),
 								EstadoCaixinha.coletando_convites,
@@ -194,5 +203,33 @@ class DefinirPalpiteUseCaseTest {
 								useCase.executar(
 										caixinha.getId(), bob.getId(), "bob@local", vBrasil.getId()))
 				.isInstanceOf(ResponseStatusException.class);
+	}
+
+	@Test
+	@DisplayName("v5: Usuário sem chave PIX no perfil → ChavePixObrigatoriaException (422)")
+	void semChavePix() {
+		// alice começa com chave no setUp; limpamos para exercitar o cenário
+		alice.definirChavePix(null);
+		alice = usuarios.save(alice);
+
+		assertThatThrownBy(
+						() ->
+								useCase.executar(
+										caixinha.getId(), alice.getId(), "alice@local", vBrasil.getId()))
+				.isInstanceOf(ChavePixObrigatoriaException.class)
+				.hasMessageContaining("chave PIX");
+	}
+
+	@Test
+	@DisplayName("v5: chave PIX em branco também é tratada como ausente")
+	void chavePixEmBranco() {
+		alice.definirChavePix("   ");
+		alice = usuarios.save(alice);
+
+		assertThatThrownBy(
+						() ->
+								useCase.executar(
+										caixinha.getId(), alice.getId(), "alice@local", vBrasil.getId()))
+				.isInstanceOf(ChavePixObrigatoriaException.class);
 	}
 }

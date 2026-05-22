@@ -3,6 +3,7 @@ package com.caxinhabet.caixinha.adapter.web;
 import com.caxinhabet.shared.money.Money;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,6 +29,10 @@ public record CriarCaixinhaRequest(
 		@NotBlank @Size(max = 80) String ladoB,
 		@NotNull Money valorIngresso,
 		@Min(2) int minimoParticipantes,
+		// FR-1 v5: Nº de Ganhadores (1, 2 ou 3). Validação cross-field
+		// (numeroGanhadores ≤ minimoParticipantes) é responsabilidade do
+		// NovaCaixinhaSpec.validar() — 422 com violations agregadas.
+		@Min(1) @Max(3) int numeroGanhadores,
 		@NotNull Instant prazoEntrada,
 		@NotNull Instant dataApuracao,
 		@NotNull @Size(min = 2) List<@NotBlank @Size(max = 120) String> rotulosResultados,

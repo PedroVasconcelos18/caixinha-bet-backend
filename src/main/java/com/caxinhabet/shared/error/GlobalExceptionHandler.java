@@ -2,9 +2,11 @@ package com.caxinhabet.shared.error;
 
 import com.caxinhabet.auth.domain.AcessoExpiradoException;
 import com.caxinhabet.auth.domain.AcessoJaConsumidoException;
+import com.caxinhabet.auth.domain.ChavePixObrigatoriaException;
 import com.caxinhabet.auth.domain.TokenInvalidoException;
 import com.caxinhabet.caixinha.domain.CriacaoCaixinhaInvalidaException;
 import com.caxinhabet.caixinha.domain.OperacaoNaoAutorizadaException;
+import com.caxinhabet.caixinha.domain.PagamentoIndisponivelException;
 import com.caxinhabet.caixinha.domain.PrazoEncerradoException;
 import com.caxinhabet.participante.domain.PalpiteInvalidoException;
 import java.net.URI;
@@ -63,6 +65,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final URI TYPE_PALPITE_INVALIDO =
 			URI.create("https://caixinha.bet/problems/palpite-invalido");
+
+	private static final URI TYPE_CHAVE_PIX_OBRIGATORIA =
+			URI.create("https://caixinha.bet/problems/chave-pix-obrigatoria");
+
+	private static final URI TYPE_PAGAMENTO_INDISPONIVEL =
+			URI.create("https://caixinha.bet/problems/pagamento-indisponivel");
 
 	@ExceptionHandler(Exception.class)
 	public ProblemDetail handleUncaught(Exception ex) {
@@ -159,6 +167,36 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 						HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
 		problem.setType(TYPE_PALPITE_INVALIDO);
 		problem.setTitle("Palpite inválido");
+		return problem;
+	}
+
+	/**
+	 * Chave PIX obrigatória (Story 2.5 v5, FR-5 v5): tentar palpitar sem
+	 * cadastrar chave PIX no perfil. 422 com type próprio para o front
+	 * abrir o form de cadastro sem inspecionar texto da mensagem.
+	 */
+	@ExceptionHandler(ChavePixObrigatoriaException.class)
+	public ProblemDetail handleChavePixObrigatoria(ChavePixObrigatoriaException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(
+						HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+		problem.setType(TYPE_CHAVE_PIX_OBRIGATORIA);
+		problem.setTitle("Chave PIX obrigatória");
+		return problem;
+	}
+
+	/**
+	 * Pagamento indisponível (Story 3.1, FR-6): operação de pagamento em
+	 * Caixinha cujo estado ainda não permite (ex.: {@code coletando_convites}
+	 * — Mínimo de Aceites não atingido).
+	 */
+	@ExceptionHandler(PagamentoIndisponivelException.class)
+	public ProblemDetail handlePagamentoIndisponivel(PagamentoIndisponivelException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(
+						HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+		problem.setType(TYPE_PAGAMENTO_INDISPONIVEL);
+		problem.setTitle("Pagamento indisponível");
 		return problem;
 	}
 }

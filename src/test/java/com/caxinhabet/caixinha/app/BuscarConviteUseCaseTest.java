@@ -66,6 +66,7 @@ class BuscarConviteUseCaseTest {
 								"Marrocos",
 								4000L,
 								3,
+								1, // numeroGanhadores (v5)
 								Instant.now().plusSeconds(86400 * 30),
 								Instant.now().plusSeconds(86400 * 30 + 3600),
 								EstadoCaixinha.coletando_convites,

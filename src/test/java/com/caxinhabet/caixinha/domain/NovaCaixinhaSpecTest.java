@@ -23,6 +23,7 @@ class NovaCaixinhaSpecTest {
 				"Marrocos",
 				Money.of("40.00"),
 				5,
+				1, // numeroGanhadores (v5)
 				PRAZO,
 				APURACAO,
 				List.of("Vitória A", "Empate", "Vitória B"),
@@ -45,6 +46,7 @@ class NovaCaixinhaSpecTest {
 						"",
 						Money.of("1.00"), // < 5
 						0, // < 2
+						0, // numeroGanhadores inválido (v5)
 						APURACAO,
 						PRAZO, // apuracao <= prazo
 						List.of("X"), // < 2 rótulos
@@ -58,6 +60,7 @@ class NovaCaixinhaSpecTest {
 				.contains("ladoB")
 				.contains("valorIngresso")
 				.contains("minimoParticipantes")
+				.contains("numeroGanhadores")
 				.contains("dataApuracao")
 				.contains("resultadosPossiveis");
 	}
@@ -72,6 +75,7 @@ class NovaCaixinhaSpecTest {
 						"B",
 						Money.of("10.00"),
 						2,
+						1, // numeroGanhadores (v5)
 						PRAZO,
 						APURACAO,
 						List.of("  Um  ", "", "Dois", "  ", "Três"),
@@ -89,10 +93,49 @@ class NovaCaixinhaSpecTest {
 						"B",
 						Money.of("10.00"),
 						2,
+						1, // numeroGanhadores (v5)
 						PRAZO,
 						APURACAO,
 						List.of("Um", "  ", ""),
 						List.of());
 		assertThat(spec.validar()).anyMatch(m -> m.contains("resultadosPossiveis"));
+	}
+
+	@Test
+	@DisplayName("v5: numeroGanhadores fora de 1..3 → motivo registrado")
+	void numeroGanhadoresForaIntervalo() {
+		NovaCaixinhaSpec spec =
+				new NovaCaixinhaSpec(
+						"T",
+						"A",
+						"B",
+						Money.of("10.00"),
+						5,
+						4, // > 3
+						PRAZO,
+						APURACAO,
+						List.of("X", "Y"),
+						List.of());
+		assertThat(spec.validar())
+				.anyMatch(m -> m.contains("numeroGanhadores"));
+	}
+
+	@Test
+	@DisplayName("v5: numeroGanhadores > minimoParticipantes → motivo registrado")
+	void numeroGanhadoresAcimaDoMinimo() {
+		NovaCaixinhaSpec spec =
+				new NovaCaixinhaSpec(
+						"T",
+						"A",
+						"B",
+						Money.of("10.00"),
+						2,
+						3, // > minimo 2
+						PRAZO,
+						APURACAO,
+						List.of("X", "Y"),
+						List.of());
+		assertThat(spec.validar())
+				.anyMatch(m -> m.contains("numeroGanhadores"));
 	}
 }

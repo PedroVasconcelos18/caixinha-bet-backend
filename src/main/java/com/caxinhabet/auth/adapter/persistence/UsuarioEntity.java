@@ -34,6 +34,25 @@ public class UsuarioEntity {
 	@Column(nullable = false)
 	private Instant criadoEm;
 
+	// Story 2.5 v5: chave PIX de recebimento, cadastrada uma vez no perfil
+	// e usada em todas as Caixinhas. Pré-requisito do Palpite (FR-5 v5).
+	// Nullable porque cadastro acontece após o primeiro login (UX).
+	@Column(length = 512)
+	private String chavePix;
+
+	// Story 3.2 v5: perfil de pagamento (nome + CPF) — exigido pelo Asaas
+	// para criar o "customer" (quem paga). Cadastro postergado ao 1º
+	// pagamento (FR-16 v5). asaasCustomerId é o id do customer no Asaas,
+	// criado lazy no 1º pagamento e reusado nas cobranças seguintes.
+	@Column(name = "nome_completo", length = 160)
+	private String nomeCompleto;
+
+	@Column(length = 11)
+	private String cpf;
+
+	@Column(name = "asaas_customer_id", length = 64)
+	private String asaasCustomerId;
+
 	protected UsuarioEntity() {
 		// JPA exige construtor sem-args.
 	}
@@ -57,5 +76,74 @@ public class UsuarioEntity {
 
 	public Instant getCriadoEm() {
 		return criadoEm;
+	}
+
+	public String getChavePix() {
+		return chavePix;
+	}
+
+	/**
+	 * Define (ou limpa) a chave PIX do perfil (Story 2.5 v5).
+	 *
+	 * <p>Normaliza na borda do agregado: {@code trim} aplicado, blank vira
+	 * {@code null}. Isso mantém a disciplina "setters privados" da classe
+	 * — quem atualiza chave PIX entra por este método (não por setter cru),
+	 * e a invariante "blank é tratado como ausente" fica garantida em um
+	 * lugar só, não espalhada nos use cases.
+	 *
+	 * @param chavePix valor cru (pode ter espaços, pode ser {@code null}/blank).
+	 */
+	public void definirChavePix(String chavePix) {
+		this.chavePix = (chavePix == null || chavePix.isBlank()) ? null : chavePix.trim();
+	}
+
+	public String getNomeCompleto() {
+		return nomeCompleto;
+	}
+
+	public String getCpf() {
+		return cpf;
+	}
+
+	public String getAsaasCustomerId() {
+		return asaasCustomerId;
+	}
+
+	/**
+	 * Define o perfil de pagamento — nome completo e CPF (Story 3.2 v5).
+	 *
+	 * <p>Normaliza na borda: nome com {@code trim}; CPF mantém só dígitos
+	 * (remove pontos/traço/espaços). Blank vira {@code null}. Validação de
+	 * formato (CPF de 11 dígitos válido) é do use case — aqui só armazena.
+	 *
+	 * @param nomeCompleto nome do Participante (usado como {@code name} no Asaas).
+	 * @param cpf CPF cru (com ou sem máscara); persistido só com dígitos.
+	 */
+	public void definirPerfilPagamento(String nomeCompleto, String cpf) {
+		this.nomeCompleto =
+				(nomeCompleto == null || nomeCompleto.isBlank()) ? null : nomeCompleto.trim();
+		this.cpf =
+				(cpf == null || cpf.isBlank()) ? null : cpf.replaceAll("\\D", "");
+	}
+
+	/**
+	 * Registra o id do customer criado no Asaas (Story 3.2 v5). Chamado
+	 * uma única vez, no 1º pagamento — depois é reusado.
+	 */
+	public void registrarAsaasCustomerId(String asaasCustomerId) {
+		this.asaasCustomerId = asaasCustomerId;
+	}
+
+	/**
+	 * {@code true} se o perfil de pagamento está completo o suficiente
+	 * para gerar uma cobrança (FR-7 v5): nome, CPF e chave PIX presentes.
+	 */
+	public boolean perfilPagamentoCompleto() {
+		return nomeCompleto != null
+				&& !nomeCompleto.isBlank()
+				&& cpf != null
+				&& cpf.length() == 11
+				&& chavePix != null
+				&& !chavePix.isBlank();
 	}
 }

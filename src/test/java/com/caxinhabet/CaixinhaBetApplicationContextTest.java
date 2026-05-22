@@ -6,6 +6,8 @@ import com.caxinhabet.auth.adapter.persistence.SolicitacaoAcessoRepository;
 import com.caxinhabet.auth.adapter.persistence.UsuarioRepository;
 import com.caxinhabet.caixinha.adapter.persistence.CaixinhaRepository;
 import com.caxinhabet.caixinha.adapter.persistence.ResultadoPossivelRepository;
+import com.caxinhabet.ledger.adapter.persistence.LedgerLancamentoRepository;
+import com.caxinhabet.pagamento.adapter.persistence.CobrancaRepository;
 import com.caxinhabet.pagamento.adapter.persistence.PagamentoEventoRepository;
 import com.caxinhabet.participante.adapter.persistence.ParticipanteRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +59,12 @@ class CaixinhaBetApplicationContextTest {
 	@MockitoBean private ResultadoPossivelRepository resultadoPossivelRepository;
 
 	@MockitoBean private ParticipanteRepository participanteRepository;
+
+	// Story 3.2: nova tabela pagamento_cobranca.
+	@MockitoBean private CobrancaRepository cobrancaRepository;
+
+	// Story 3.3: ledger de dupla entrada.
+	@MockitoBean private LedgerLancamentoRepository ledgerLancamentoRepository;
 
 	@Test
 	@DisplayName("O contexto Spring sobe sem erro a partir de CaixinhaBetApplication")

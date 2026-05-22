@@ -75,13 +75,30 @@ auth:
   sessao:
     ttl-dias: 7
 
-# Configuração do módulo caixinha (Story 2.4).
+# Configuração do módulo caixinha (Stories 2.4 + 3.1).
 # convite.sender: "log" (default — LogConviteEmailSender, dev) ou "smtp"
 # (SmtpConviteEmailSender, produção). CaixinhaBootGuard valida no boot.
+# minimo-atingido.sender: aviso "Mínimo atingido! Hora de pagar" disparado
+# quando a Caixinha transiciona coletando_convites→coletando_pagamentos
+# (Story 3.1, FR-6). Mesma disciplina log/smtp do convite.
 caixinha:
   convite:
     sender: ${CAIXINHA_CONVITE_SENDER:log}
     email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+  minimo-atingido:
+    sender: ${CAIXINHA_MINIMO_ATINGIDO_SENDER:log}
+    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+  # Story 3.4: aviso de Formação / Reversão da Caixinha (FR-9).
+  formacao:
+    sender: ${CAIXINHA_FORMACAO_SENDER:log}
+    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+  # Story 3.6: job de reconciliação contra o extrato do Provedor (NFR-2).
+  # intervalo-ms: período entre rodadas (fixedDelay — conta do fim da
+  # rodada anterior). atraso-inicial-ms: espera antes da 1ª rodada (deixa
+  # o app subir). Default 5 min / 1 min.
+  reconciliacao:
+    intervalo-ms: ${CAIXINHA_RECONCILIACAO_INTERVALO_MS:300000}
+    atraso-inicial-ms: ${CAIXINHA_RECONCILIACAO_ATRASO_INICIAL_MS:60000}
 
 # Configuração do PSP (Story 1.4).
 # Sandbox por default (R-7 mitigação: trocabilidade de ambiente sem código).

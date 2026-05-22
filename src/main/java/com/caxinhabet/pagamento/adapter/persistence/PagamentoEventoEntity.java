@@ -46,14 +46,29 @@ public class PagamentoEventoEntity {
 	@Column(nullable = false)
 	private Instant recebidoEm;
 
+	// Story 3.3: id da cobrança do PSP (pay_xxx) que este evento afeta.
+	// NULLABLE — eventos de gate (Story 1.5) e eventos não-de-cobrança
+	// não preenchem. Usado pela regra de ordenação (FR-8 / NFR-2).
+	@Column
+	private String cobrancaId;
+
 	protected PagamentoEventoEntity() {
 		// JPA exige construtor sem-args.
 	}
 
 	public PagamentoEventoEntity(String eventId, Instant providerTimestamp, Map<String, Object> payload) {
+		this(eventId, providerTimestamp, payload, null);
+	}
+
+	public PagamentoEventoEntity(
+			String eventId,
+			Instant providerTimestamp,
+			Map<String, Object> payload,
+			String cobrancaId) {
 		this.eventId = eventId;
 		this.providerTimestamp = providerTimestamp;
 		this.payload = payload;
+		this.cobrancaId = cobrancaId;
 		this.recebidoEm = Instant.now();
 	}
 
@@ -75,5 +90,9 @@ public class PagamentoEventoEntity {
 
 	public Instant getRecebidoEm() {
 		return recebidoEm;
+	}
+
+	public String getCobrancaId() {
+		return cobrancaId;
 	}
 }

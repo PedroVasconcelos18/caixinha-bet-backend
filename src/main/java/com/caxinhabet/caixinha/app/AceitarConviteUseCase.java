@@ -30,11 +30,15 @@ public class AceitarConviteUseCase {
 
 	private final CaixinhaRepository caixinhas;
 	private final ParticipanteRepository participantes;
+	private final AvaliarTransicaoAceitesService avaliarTransicao;
 
 	public AceitarConviteUseCase(
-			CaixinhaRepository caixinhas, ParticipanteRepository participantes) {
+			CaixinhaRepository caixinhas,
+			ParticipanteRepository participantes,
+			AvaliarTransicaoAceitesService avaliarTransicao) {
 		this.caixinhas = caixinhas;
 		this.participantes = participantes;
+		this.avaliarTransicao = avaliarTransicao;
 	}
 
 	@Transactional
@@ -66,10 +70,22 @@ public class AceitarConviteUseCase {
 		}
 
 		// 4. Transição idempotente: convidado → aceito. Outros status = no-op.
-		if (participante.getStatus() == StatusParticipante.convidado) {
+		boolean houveTransicaoAceite =
+				participante.getStatus() == StatusParticipante.convidado;
+		if (houveTransicaoAceite) {
 			participante.setStatus(StatusParticipante.aceito);
 		}
+		ParticipanteEntity salvo = participantes.save(participante);
 
-		return participantes.save(participante);
+		// 5. Story 3.1 (FR-6): se houve transição convidado→aceito nesta
+		// chamada, reavalia se a Caixinha atingiu o Mínimo de Aceites e,
+		// em caso afirmativo, transiciona para coletando_pagamentos NA
+		// MESMA transação. Notificação afterCommit fica para um listener
+		// futuro (Task 4 / Story 3.1) — por ora, transição é o efeito visível.
+		if (houveTransicaoAceite) {
+			avaliarTransicao.avaliar(caixinha);
+		}
+
+		return salvo;
 	}
 }

@@ -43,7 +43,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 			"com.caxinhabet.pagamento.adapter.persistence", // entidades reais (Story 1.4+)
 			"com.caxinhabet.auth.adapter.persistence", // Story 2.1+
 			"com.caxinhabet.caixinha.adapter.persistence", // Story 2.2+
-			"com.caxinhabet.participante.adapter.persistence" // Story 2.2+
+			"com.caxinhabet.participante.adapter.persistence", // Story 2.2+
+			"com.caxinhabet.ledger.adapter.persistence" // Story 3.3+
 		})
 class NamingStrategyTest {
 

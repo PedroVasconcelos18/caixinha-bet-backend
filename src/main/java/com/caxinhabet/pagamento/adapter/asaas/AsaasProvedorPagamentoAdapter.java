@@ -1,15 +1,15 @@
 package com.caxinhabet.pagamento.adapter.asaas;
 
 import com.caxinhabet.pagamento.domain.CobrancaCriada;
+import com.caxinhabet.pagamento.domain.DadosCliente;
+import com.caxinhabet.pagamento.domain.Ganhador;
 import com.caxinhabet.pagamento.domain.ProvedorPagamento;
+import com.caxinhabet.pagamento.domain.ResultadoTransferencia;
 import com.caxinhabet.pagamento.domain.SolicitacaoCobranca;
 import com.caxinhabet.pagamento.domain.StatusCobranca;
-import com.caxinhabet.pagamento.domain.Vencedor;
-import com.caxinhabet.shared.money.Money;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -32,6 +32,29 @@ class AsaasProvedorPagamentoAdapter implements ProvedorPagamento {
 
 	AsaasProvedorPagamentoAdapter(@Qualifier("asaasRestClient") RestClient asaasRestClient) {
 		this.http = asaasRestClient;
+	}
+
+	/**
+	 * Registra um cliente no Asaas: {@code POST /customers} com
+	 * {@code name} + {@code cpfCnpj} (campos obrigatórios — confirmado na
+	 * doc Asaas, Story 3.2). Devolve o {@code id} ({@code cus_<hash>}).
+	 *
+	 * <p>O endpoint relativo {@code /customers} (sem {@code /v3}) porque
+	 * o {@code /api/v3} já está embutido na base-url (ver {@link AsaasProperties}).
+	 */
+	@Override
+	public String criarCliente(DadosCliente dados) {
+		Map<String, Object> payload =
+				Map.of("name", dados.nome(), "cpfCnpj", dados.cpf());
+
+		@SuppressWarnings("unchecked")
+		Map<String, Object> cliente =
+				http.post().uri("/customers").body(payload).retrieve().body(Map.class);
+
+		if (cliente == null || cliente.get("id") == null) {
+			throw new IllegalStateException("Asaas não retornou id do cliente criado");
+		}
+		return String.valueOf(cliente.get("id"));
 	}
 
 	/**
@@ -93,10 +116,64 @@ class AsaasProvedorPagamentoAdapter implements ProvedorPagamento {
 		return new CobrancaCriada(cobrancaId, nullSafe(encoded), nullSafe(payload2), expira);
 	}
 
+	/**
+	 * Consulta o status de uma cobrança no Asaas: {@code GET /payments/{id}}
+	 * (Story 3.6, FR-NFR2 — reconciliação).
+	 *
+	 * <p>Traduz o {@code status} do Asaas para o {@link StatusCobranca} de
+	 * domínio. Status Asaas conhecidos:
+	 * <ul>
+	 *   <li>{@code PENDING} → {@link StatusCobranca#PENDENTE}
+	 *   <li>{@code CONFIRMED}, {@code RECEIVED}, {@code RECEIVED_IN_CASH},
+	 *       {@code REFUND_REQUESTED}, {@code REFUND_IN_PROGRESS} →
+	 *       {@link StatusCobranca#CONFIRMADA} — ver nota abaixo
+	 *   <li>{@code OVERDUE} → {@link StatusCobranca#EXPIRADA}
+	 *   <li>{@code REFUNDED}, {@code CHARGEBACK_*} →
+	 *       {@link StatusCobranca#ESTORNADA}
+	 * </ul>
+	 * Status desconhecido → {@code PENDENTE} (conservador — não afirma
+	 * pagamento sem certeza).
+	 *
+	 * <p><b>{@code REFUND_REQUESTED}/{@code REFUND_IN_PROGRESS} → CONFIRMADA</b>
+	 * (decisão code review Épico 3, 2026-05-21): um estorno apenas
+	 * <i>solicitado</i> ou <i>em andamento</i> NÃO é um estorno efetivado —
+	 * o dinheiro ainda está custodiado. Mapeá-los para {@code ESTORNADA}
+	 * faria a reconciliação (Story 3.6) gritar divergência falsa para uma
+	 * cobrança que está legitimamente {@code confirmada} localmente. Só
+	 * {@code REFUNDED} (efetivado) e chargebacks contam como estorno.
+	 */
 	@Override
 	public StatusCobranca consultar(String cobrancaId) {
-		throw new UnsupportedOperationException(
-				"consultar() implementado no Épico 3 (FR-8). Story 1.4 = gate-only.");
+		@SuppressWarnings("unchecked")
+		Map<String, Object> cobranca =
+				http.get().uri("/payments/{id}", cobrancaId).retrieve().body(Map.class);
+
+		if (cobranca == null || cobranca.get("status") == null) {
+			throw new IllegalStateException(
+					"Asaas não retornou status da cobrança " + cobrancaId);
+		}
+		return traduzirStatus(String.valueOf(cobranca.get("status")));
+	}
+
+	/** Tradução status Asaas → domínio (Story 3.6). Pacote-visível p/ teste. */
+	static StatusCobranca traduzirStatus(String statusAsaas) {
+		if (statusAsaas == null) {
+			return StatusCobranca.PENDENTE;
+		}
+		return switch (statusAsaas) {
+			case "CONFIRMED",
+					"RECEIVED",
+					"RECEIVED_IN_CASH",
+					// Estorno pedido/em andamento: dinheiro ainda custodiado —
+					// só o REFUNDED efetivado abaixo conta como estorno.
+					"REFUND_REQUESTED",
+					"REFUND_IN_PROGRESS" ->
+					StatusCobranca.CONFIRMADA;
+			case "OVERDUE" -> StatusCobranca.EXPIRADA;
+			case "REFUNDED", "CHARGEBACK_REQUESTED", "CHARGEBACK_DISPUTE" ->
+					StatusCobranca.ESTORNADA;
+			default -> StatusCobranca.PENDENTE; // PENDING e desconhecidos
+		};
 	}
 
 	@Override
@@ -106,9 +183,15 @@ class AsaasProvedorPagamentoAdapter implements ProvedorPagamento {
 	}
 
 	@Override
-	public void split(List<Vencedor> vencedores, Money taxaPlataforma) {
+	public ResultadoTransferencia transferir(Ganhador ganhador) {
 		throw new UnsupportedOperationException(
-				"split() implementado no Épico 4 (FR-13). Story 1.4 = gate-only.");
+				"transferir() implementado no Épico 4 (FR-13 v5). Story 1.4 v5 = gate-only.");
+	}
+
+	@Override
+	public ResultadoTransferencia consultarTransferencia(String transferenciaId) {
+		throw new UnsupportedOperationException(
+				"consultarTransferencia() implementado no Épico 4 (FR-13 v5). Story 1.4 v5 = gate-only.");
 	}
 
 	private static String nullSafe(String s) {

@@ -53,6 +53,13 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<dependency>
+				<groupId>me.paulschwarz</groupId>
+				<artifactId>spring-dotenv-bom</artifactId>
+				<version>5.1.0</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>
@@ -95,6 +102,20 @@
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+
+		<!--
+		  spring-dotenv: carrega o .env local no Environment do Spring antes
+		  do bind das @ConfigurationProperties. Auto-integra via
+		  EnvironmentPostProcessor — sem código de inicialização nosso.
+		  Spring NÃO lê .env nativamente; sem isso, ASAAS_WEBHOOK_AUTH_TOKEN
+		  só funciona se exportado via shell, o que é fácil de esquecer.
+		  .env está no .gitignore (segredos nunca commitados).
+		-->
+		<dependency>
+			<groupId>me.paulschwarz</groupId>
+			<artifactId>springboot4-dotenv</artifactId>
+			<optional>true</optional>
 		</dependency>
 
 		<!--

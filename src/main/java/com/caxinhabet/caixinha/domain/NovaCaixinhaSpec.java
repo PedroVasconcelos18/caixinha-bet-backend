@@ -30,6 +30,7 @@ public record NovaCaixinhaSpec(
 		String ladoB,
 		Money valorIngresso,
 		int minimoParticipantes,
+		int numeroGanhadores,
 		Instant prazoEntrada,
 		Instant dataApuracao,
 		List<String> rotulosResultados,
@@ -72,6 +73,15 @@ public record NovaCaixinhaSpec(
 
 		if (minimoParticipantes < 2) {
 			motivos.add("minimoParticipantes deve ser >= 2");
+		}
+
+		// FR-1 v5: Nº de Ganhadores (1, 2 ou 3) e ≤ minimoParticipantes.
+		if (numeroGanhadores < 1 || numeroGanhadores > Caixinha.MAX_GANHADORES) {
+			motivos.add(
+					"numeroGanhadores deve estar entre 1 e " + Caixinha.MAX_GANHADORES);
+		} else if (minimoParticipantes >= 2 && numeroGanhadores > minimoParticipantes) {
+			motivos.add(
+					"numeroGanhadores não pode ser maior que minimoParticipantes");
 		}
 
 		if (prazoEntrada == null) {

@@ -1,6 +1,10 @@
 package com.caxinhabet.auth.adapter.web;
 
+import com.caxinhabet.auth.adapter.persistence.UsuarioEntity;
+import com.caxinhabet.auth.adapter.persistence.UsuarioRepository;
 import com.caxinhabet.auth.adapter.session.SessaoStore;
+import com.caxinhabet.auth.app.AtualizarChavePixUseCase;
+import com.caxinhabet.auth.app.AtualizarPerfilPagamentoUseCase;
 import com.caxinhabet.auth.app.AuthProperties;
 import com.caxinhabet.auth.app.ConsumirAcessoUseCase;
 import com.caxinhabet.auth.app.SolicitarAcessoUseCase;
@@ -16,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -40,16 +45,25 @@ class AuthController {
 	private final ConsumirAcessoUseCase consumir;
 	private final SessaoStore sessaoStore;
 	private final AuthProperties authProps;
+	private final UsuarioRepository usuarios;
+	private final AtualizarChavePixUseCase atualizarChavePix;
+	private final AtualizarPerfilPagamentoUseCase atualizarPerfilPagamento;
 
 	AuthController(
 			SolicitarAcessoUseCase solicitar,
 			ConsumirAcessoUseCase consumir,
 			SessaoStore sessaoStore,
-			AuthProperties authProps) {
+			AuthProperties authProps,
+			UsuarioRepository usuarios,
+			AtualizarChavePixUseCase atualizarChavePix,
+			AtualizarPerfilPagamentoUseCase atualizarPerfilPagamento) {
 		this.solicitar = solicitar;
 		this.consumir = consumir;
 		this.sessaoStore = sessaoStore;
 		this.authProps = authProps;
+		this.usuarios = usuarios;
+		this.atualizarChavePix = atualizarChavePix;
+		this.atualizarPerfilPagamento = atualizarPerfilPagamento;
 	}
 
 	@PostMapping("/solicitar-acesso")
@@ -79,7 +93,40 @@ class AuthController {
 		if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não autenticado.");
 		}
-		return ResponseEntity.ok(new MeResponse(auth.getName()));
+		// v5: front precisa saber chave PIX + perfil de pagamento para
+		// decidir se mostra os forms antes do Palpite/Pagamento.
+		UsuarioEntity u = usuarioAutenticado(auth);
+		return ResponseEntity.ok(MeResponse.de(u));
+	}
+
+	@PutMapping("/me/chave-pix")
+	ResponseEntity<MeResponse> atualizarChavePix(
+			@Valid @RequestBody AtualizarChavePixRequest req, Authentication auth) {
+		UsuarioEntity u = usuarioAutenticado(auth);
+		UsuarioEntity atualizado = atualizarChavePix.executar(u.getId(), req.chavePix());
+		return ResponseEntity.ok(MeResponse.de(atualizado));
+	}
+
+	@PutMapping("/me/perfil-pagamento")
+	ResponseEntity<MeResponse> atualizarPerfilPagamento(
+			@Valid @RequestBody AtualizarPerfilPagamentoRequest req, Authentication auth) {
+		UsuarioEntity u = usuarioAutenticado(auth);
+		UsuarioEntity atualizado =
+				atualizarPerfilPagamento.executar(
+						u.getId(), req.nomeCompleto(), req.cpf());
+		return ResponseEntity.ok(MeResponse.de(atualizado));
+	}
+
+	private UsuarioEntity usuarioAutenticado(Authentication auth) {
+		if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Não autenticado.");
+		}
+		return usuarios
+				.findByEmail(auth.getName())
+				.orElseThrow(
+						() ->
+								new ResponseStatusException(
+										HttpStatus.UNAUTHORIZED, "Usuário não encontrado."));
 	}
 
 	@PostMapping("/sair")

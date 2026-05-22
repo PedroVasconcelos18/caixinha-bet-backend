@@ -51,6 +51,11 @@ public class CaixinhaEntity {
 	@Column(nullable = false)
 	private int minimoParticipantes;
 
+	// FR-1 v5 (2026-05-21): Nº de Ganhadores (1, 2 ou 3) — entre quantos
+	// o Prêmio é rateado. CHECK SQL em V6 garante 1..3 e ≤ minimoParticipantes.
+	@Column(nullable = false)
+	private int numeroGanhadores;
+
 	@Column(nullable = false)
 	private Instant prazoEntrada;
 
@@ -77,6 +82,7 @@ public class CaixinhaEntity {
 			String ladoB,
 			long valorIngressoCentavos,
 			int minimoParticipantes,
+			int numeroGanhadores,
 			Instant prazoEntrada,
 			Instant dataApuracao,
 			EstadoCaixinha estado,
@@ -86,6 +92,7 @@ public class CaixinhaEntity {
 		this.ladoB = ladoB;
 		this.valorIngressoCentavos = valorIngressoCentavos;
 		this.minimoParticipantes = minimoParticipantes;
+		this.numeroGanhadores = numeroGanhadores;
 		this.prazoEntrada = prazoEntrada;
 		this.dataApuracao = dataApuracao;
 		this.estado = estado;
@@ -117,6 +124,10 @@ public class CaixinhaEntity {
 		return minimoParticipantes;
 	}
 
+	public int getNumeroGanhadores() {
+		return numeroGanhadores;
+	}
+
 	public Instant getPrazoEntrada() {
 		return prazoEntrada;
 	}
@@ -127,6 +138,32 @@ public class CaixinhaEntity {
 
 	public EstadoCaixinha getEstado() {
 		return estado;
+	}
+
+	/**
+	 * Story 3.1 (FR-6): transiciona a Caixinha para um novo estado.
+	 *
+	 * <p>Setter cru NÃO é exposto. Este método é o único caminho de
+	 * mutação do estado a partir da camada de aplicação — concentra a
+	 * disciplina de "ninguém regride estado por acidente".
+	 *
+	 * <p><b>Transição redundante (estado-alvo == atual) é no-op silencioso</b>
+	 * — não lança (fix code review Épico 3, 2026-05-21). Motivo: sob
+	 * concorrência, dois eventos assíncronos (dois aceites no N-ésimo, duas
+	 * confirmações de webhook) podem ambos chamar {@code transicionarPara}
+	 * para o mesmo estado-alvo; lançar aqui derrubaria o webhook (500 →
+	 * Asaas re-tenta em loop) ou faria rollback de um aceite legítimo. O
+	 * resultado idempotente (estado já é o desejado) é exatamente o que se
+	 * quer. Validações de transições legais (quais origens→destinos são
+	 * válidas) ficam nos serviços de cada Story.
+	 *
+	 * @param novo estado-alvo (não pode ser {@code null})
+	 */
+	public void transicionarPara(EstadoCaixinha novo) {
+		if (novo == null) {
+			throw new IllegalArgumentException("estado-alvo não pode ser null");
+		}
+		this.estado = novo;
 	}
 
 	public Long getOrganizadorUsuarioId() {
