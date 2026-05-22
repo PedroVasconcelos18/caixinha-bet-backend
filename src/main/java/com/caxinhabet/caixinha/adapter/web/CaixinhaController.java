@@ -13,6 +13,7 @@ import com.caxinhabet.caixinha.app.CriarCaixinhaUseCase;
 import com.caxinhabet.caixinha.app.DefinirPalpiteUseCase;
 import com.caxinhabet.caixinha.app.EncerrarPrazoUseCase;
 import com.caxinhabet.caixinha.app.EnviarConvitesUseCase;
+import com.caxinhabet.caixinha.app.ListarCaixinhasUseCase;
 import com.caxinhabet.caixinha.app.MontarAcertoContasUseCase;
 import com.caxinhabet.caixinha.domain.Caixinha;
 import com.caxinhabet.caixinha.domain.NovaCaixinhaSpec;
@@ -61,6 +62,7 @@ class CaixinhaController {
 	private final MontarAcertoContasUseCase montarAcertoContas;
 	private final EncerrarPrazoUseCase encerrarPrazo;
 	private final com.caxinhabet.pagamento.app.AceitarPremioUseCase aceitarPremio;
+	private final ListarCaixinhasUseCase listarCaixinhas;
 	private final CaixinhaRepository caixinhas;
 	private final ResultadoPossivelRepository resultados;
 	private final ParticipanteRepository participantes;
@@ -77,6 +79,7 @@ class CaixinhaController {
 			MontarAcertoContasUseCase montarAcertoContas,
 			EncerrarPrazoUseCase encerrarPrazo,
 			com.caxinhabet.pagamento.app.AceitarPremioUseCase aceitarPremio,
+			ListarCaixinhasUseCase listarCaixinhas,
 			CaixinhaRepository caixinhas,
 			ResultadoPossivelRepository resultados,
 			ParticipanteRepository participantes,
@@ -92,6 +95,7 @@ class CaixinhaController {
 		this.montarAcertoContas = montarAcertoContas;
 		this.encerrarPrazo = encerrarPrazo;
 		this.aceitarPremio = aceitarPremio;
+		this.listarCaixinhas = listarCaixinhas;
 		this.caixinhas = caixinhas;
 		this.resultados = resultados;
 		this.participantes = participantes;
@@ -124,6 +128,18 @@ class CaixinhaController {
 
 		CaixinhaResponse body = CaixinhaResponse.de(caixinha, participantesEntities);
 		return ResponseEntity.created(URI.create("/caixinhas/" + caixinha.id())).body(body);
+	}
+
+	// ---------- Story 6.1: dashboard — listar Caixinhas (FR-17) ----------
+
+	@GetMapping
+	ResponseEntity<List<CaixinhaResumoResponse>> listar(Authentication auth) {
+		Long usuarioId = resolverUsuarioId(auth);
+		List<CaixinhaResumoResponse> body =
+				listarCaixinhas.executar(usuarioId).stream()
+						.map(CaixinhaResumoResponse::de)
+						.toList();
+		return ResponseEntity.ok(body);
 	}
 
 	@GetMapping("/{id}")
