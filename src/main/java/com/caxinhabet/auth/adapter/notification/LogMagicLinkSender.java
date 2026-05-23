@@ -55,6 +55,16 @@ public class LogMagicLinkSender implements MagicLinkSender {
 				expiraEm);
 	}
 
+	@Override
+	public void enviarVerificacao(String email, String linkAbsoluto, Instant expiraEm) {
+		capturados.add(new LinkEnviado(email, linkAbsoluto, expiraEm));
+		log.info(
+				"[VERIFICAR-EMAIL] Para reproduzir o e-mail, abra: {}  (destinatário={}, expira={})",
+				linkAbsoluto,
+				email,
+				expiraEm);
+	}
+
 	/**
 	 * Cópia defensiva dos links enviados — utilizado pelos testes para
 	 * recuperar a URL do callback. NÃO usar em código de produção.

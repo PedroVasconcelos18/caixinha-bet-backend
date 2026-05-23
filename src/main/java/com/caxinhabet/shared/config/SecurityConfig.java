@@ -75,6 +75,8 @@ class SecurityConfig {
 												"/auth/login",
 												"/auth/recuperar-senha",
 												"/auth/redefinir-senha",
+												"/auth/verificar-email/confirmar",
+												"/auth/verificar-email/reenviar",
 												"/auth/sair")
 										.permitAll()
 										.requestMatchers("/webhooks/asaas")

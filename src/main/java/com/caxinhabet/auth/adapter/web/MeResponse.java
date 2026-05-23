@@ -1,35 +1,50 @@
 package com.caxinhabet.auth.adapter.web;
 
 import com.caxinhabet.auth.adapter.persistence.UsuarioEntity;
+import java.time.LocalDate;
 
 /**
- * Resposta de {@code GET /auth/me} (Story 2.1; v5 acrescentou perfil de
- * pagamento).
+ * Resposta de {@code GET /auth/me} (Minha Conta, 2026-05 — perfil estendido,
+ * verificação de e-mail, foto).
  *
- * <p>Sucesso = corpo direto (sem envelope) — regra dura AR-8.
+ * <p>Sucesso = corpo direto (sem envelope) — regra dura AR-8. camelCase 1:1
+ * com o front. Dinheiro nunca aparece neste DTO (usuário não é Conta-Ledger);
+ * datas em ISO (LocalDate / Instant via Jackson default).
  *
- * @param email identidade do usuário (e-mail do magic link).
- * @param chavePix chave PIX cadastrada, ou {@code null} (FR-5 v5).
- * @param nomeCompleto nome do perfil de pagamento, ou {@code null} (FR-16 v5).
- * @param cpf CPF do perfil de pagamento (só dígitos), ou {@code null}.
- * @param perfilPagamentoCompleto {@code true} se nome+CPF+chave PIX estão
- *     todos presentes — o front usa para decidir se mostra o form de
- *     perfil antes de permitir o pagamento (Story 3.2).
+ * @param fotoUrl path relativo ({@code /auth/me/foto?v=…}) ou {@code null}.
+ *     O front prepende a base URL da API. O query param {@code v} é
+ *     cache-buster derivado do tamanho do blob — invalida cache do browser
+ *     quando a foto muda. Não expõe conteúdo.
  */
 public record MeResponse(
-		String email,
-		String chavePix,
-		String nomeCompleto,
-		String cpf,
-		boolean perfilPagamentoCompleto) {
+        String email,
+        String chavePix,
+        String nomeCompleto,
+        String cpf,
+        LocalDate dataNascimento,
+        String telefone,
+        String cidade,
+        String bio,
+        String fotoUrl,
+        boolean emailVerificado,
+        boolean perfilPagamentoCompleto) {
 
-	/** Monta a partir da entidade — concentra o mapeamento num lugar só. */
-	public static MeResponse de(UsuarioEntity u) {
-		return new MeResponse(
-				u.getEmail(),
-				u.getChavePix(),
-				u.getNomeCompleto(),
-				u.getCpf(),
-				u.perfilPagamentoCompleto());
-	}
+    public static MeResponse de(UsuarioEntity u) {
+        String fotoUrl =
+                u.getFotoBlob() == null
+                        ? null
+                        : "/auth/me/foto?v=" + u.getFotoBlob().length;
+        return new MeResponse(
+                u.getEmail(),
+                u.getChavePix(),
+                u.getNomeCompleto(),
+                u.getCpf(),
+                u.getDataNascimento(),
+                u.getTelefone(),
+                u.getCidade(),
+                u.getBio(),
+                fotoUrl,
+                u.isEmailVerificado(),
+                u.perfilPagamentoCompleto());
+    }
 }

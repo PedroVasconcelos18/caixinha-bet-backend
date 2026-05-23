@@ -4,6 +4,7 @@ import com.caxinhabet.auth.adapter.persistence.UsuarioEntity;
 import com.caxinhabet.auth.adapter.persistence.UsuarioRepository;
 import com.caxinhabet.auth.adapter.session.SessaoStore;
 import com.caxinhabet.auth.domain.CredenciaisInvalidasException;
+import com.caxinhabet.auth.domain.EmailNaoVerificadoException;
 import com.caxinhabet.auth.domain.SessaoUsuario;
 import com.caxinhabet.auth.domain.TokenAcesso;
 import java.time.Instant;
@@ -51,13 +52,21 @@ public class AutenticarUseCase {
 	@Transactional
 	public SessaoUsuario executar(String emailBruto, String senhaBruta) {
 		String email = emailBruto == null ? "" : emailBruto.trim().toLowerCase();
+		// findByEmailEAtivo filtra contas soft-deleted (deletado_em IS NULL).
+		// Mesma resposta de credenciais inválidas (anti-enumeração).
 		UsuarioEntity usuario =
-				usuarios.findByEmail(email).orElseThrow(CredenciaisInvalidasException::new);
+				usuarios
+						.findByEmailEAtivo(email)
+						.orElseThrow(CredenciaisInvalidasException::new);
 
 		if (usuario.getSenhaHash() == null
 				|| senhaBruta == null
 				|| !encoder.matches(senhaBruta, usuario.getSenhaHash())) {
 			throw new CredenciaisInvalidasException();
+		}
+
+		if (!usuario.isEmailVerificado()) {
+			throw new EmailNaoVerificadoException(usuario.getEmail());
 		}
 
 		Instant agora = Instant.now();

@@ -24,4 +24,12 @@ import java.time.Instant;
 public interface MagicLinkSender {
 
 	void enviar(String email, String linkAbsoluto, Instant expiraEm);
+
+	/**
+	 * Envia link de verificação de e-mail (Minha Conta, 2026-05). Mesma porta
+	 * de entrega, mensagem diferente — separado do {@link #enviar} para que
+	 * os adapters possam personalizar assunto/corpo (verificação ≠ magic
+	 * link de acesso).
+	 */
+	void enviarVerificacao(String email, String linkAbsoluto, Instant expiraEm);
 }

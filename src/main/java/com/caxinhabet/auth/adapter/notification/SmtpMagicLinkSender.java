@@ -64,4 +64,33 @@ public class SmtpMagicLinkSender implements MagicLinkSender {
 			log.error("Falha ao enviar magic link SMTP para {}: {}", email, e.getMessage(), e);
 		}
 	}
+
+	@Override
+	public void enviarVerificacao(String email, String linkAbsoluto, Instant expiraEm) {
+		try {
+			SimpleMailMessage msg = new SimpleMailMessage();
+			msg.setFrom(emailFrom);
+			msg.setTo(email);
+			msg.setSubject("Confirme seu e-mail no Caixinha Bet");
+			msg.setText(
+					"Oi!\n\n"
+							+ "Para concluir seu cadastro no Caixinha Bet, confirme seu"
+							+ " e-mail clicando no link abaixo. Ele vale por 24 horas e só"
+							+ " pode ser usado uma vez:\n\n"
+							+ linkAbsoluto
+							+ "\n\n"
+							+ "Se não foi você que pediu, é só ignorar este e-mail — sem"
+							+ " ações na sua conta.\n\n"
+							+ "Até já,\n"
+							+ "Caixinha Bet");
+			mailSender.send(msg);
+			log.info("Verificação de e-mail SMTP enviada para {}", email);
+		} catch (Exception e) {
+			log.error(
+					"Falha ao enviar verificação de e-mail SMTP para {}: {}",
+					email,
+					e.getMessage(),
+					e);
+		}
+	}
 }

@@ -33,6 +33,15 @@ spring:
       # para exceções de domínio.
       enabled: true
 
+  servlet:
+    # Minha Conta (2026-05): upload de foto via multipart. Limite de 3 MB
+    # (folga acima do limite de 2 MB do domínio Foto), para que o multipart
+    # wrapper não rejeite antes do nosso handler — a mensagem fica nossa.
+    multipart:
+      enabled: true
+      max-file-size: 3MB
+      max-request-size: 3MB
+
   # Mail (Story 2.4). Em dev fica vazio (sender=log); em produção configurar
   # via env (SMTP_HOST/PORT/USER/PASSWORD). Provedores típicos: SendGrid,
   # Mailgun, AWS SES — Pedro decide na hora do deploy.

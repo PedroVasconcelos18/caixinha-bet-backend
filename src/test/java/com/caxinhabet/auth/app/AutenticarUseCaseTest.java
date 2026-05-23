@@ -31,6 +31,7 @@ class AutenticarUseCaseTest {
         r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         r.add("spring.datasource.username", POSTGRES::getUsername);
         r.add("spring.datasource.password", POSTGRES::getPassword);
+        r.add("app.public-base-url", () -> "http://localhost:3000");
     }
 
     @Autowired private AutenticarUseCase autenticar;
@@ -44,10 +45,18 @@ class AutenticarUseCaseTest {
         sessaoStore.limpar();
     }
 
+    private void marcarVerificado(String email) {
+        UsuarioEntity u = usuarios.findByEmail(email).orElseThrow();
+        u.marcarEmailVerificado();
+        usuarios.save(u);
+    }
+
     @Test
     @DisplayName("E-mail e senha corretos → abre sessão")
     void loginValido() {
-        registrar.executar("Alice", "529.982.247-25", "alice@local", "senha1234");
+        registrar.executar(
+                "Alice", "529.982.247-25", "alice@local", "senha1234", java.time.LocalDate.of(2000, 1, 1));
+        marcarVerificado("alice@local");
         sessaoStore.limpar(); // descarta a sessão do cadastro
 
         SessaoUsuario sessao = autenticar.executar("alice@local", "senha1234");
@@ -59,7 +68,9 @@ class AutenticarUseCaseTest {
     @Test
     @DisplayName("Login é case-insensitive no e-mail")
     void loginCaseInsensitive() {
-        registrar.executar("Bob", "529.982.247-25", "bob@local", "senha1234");
+        registrar.executar(
+                "Bob", "529.982.247-25", "bob@local", "senha1234", java.time.LocalDate.of(2000, 1, 1));
+        marcarVerificado("bob@local");
         assertThat(autenticar.executar("BOB@LOCAL", "senha1234").email())
                 .isEqualTo("bob@local");
     }
@@ -67,7 +78,9 @@ class AutenticarUseCaseTest {
     @Test
     @DisplayName("Senha errada → CredenciaisInvalidasException")
     void senhaErrada() {
-        registrar.executar("Carol", "529.982.247-25", "carol@local", "senha1234");
+        registrar.executar(
+                "Carol", "529.982.247-25", "carol@local", "senha1234", java.time.LocalDate.of(2000, 1, 1));
+        marcarVerificado("carol@local");
         assertThatThrownBy(() -> autenticar.executar("carol@local", "errada999"))
                 .isInstanceOf(CredenciaisInvalidasException.class);
     }

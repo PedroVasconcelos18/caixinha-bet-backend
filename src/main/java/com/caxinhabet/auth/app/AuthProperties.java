@@ -18,6 +18,7 @@ public class AuthProperties {
 
 	private MagicLink magicLink = new MagicLink();
 	private Sessao sessao = new Sessao();
+	private Verificacao verificacao = new Verificacao();
 
 	public MagicLink getMagicLink() {
 		return magicLink;
@@ -33,6 +34,14 @@ public class AuthProperties {
 
 	public void setSessao(Sessao sessao) {
 		this.sessao = sessao;
+	}
+
+	public Verificacao getVerificacao() {
+		return verificacao;
+	}
+
+	public void setVerificacao(Verificacao verificacao) {
+		this.verificacao = verificacao;
 	}
 
 	public static class MagicLink {
@@ -65,6 +74,18 @@ public class AuthProperties {
 
 		public void setTtlDias(int ttlDias) {
 			this.ttlDias = ttlDias;
+		}
+	}
+
+	public static class Verificacao {
+		private int ttlHoras = 24;
+
+		public int getTtlHoras() {
+			return ttlHoras;
+		}
+
+		public void setTtlHoras(int ttlHoras) {
+			this.ttlHoras = ttlHoras;
 		}
 	}
 }

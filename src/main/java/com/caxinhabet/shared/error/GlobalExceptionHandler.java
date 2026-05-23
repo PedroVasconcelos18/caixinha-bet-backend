@@ -2,10 +2,15 @@ package com.caxinhabet.shared.error;
 
 import com.caxinhabet.auth.domain.AcessoExpiradoException;
 import com.caxinhabet.auth.domain.AcessoJaConsumidoException;
+import com.caxinhabet.auth.domain.ArquivoInvalidoException;
+import com.caxinhabet.auth.domain.ArquivoMuitoGrandeException;
 import com.caxinhabet.auth.domain.ChavePixObrigatoriaException;
+import com.caxinhabet.auth.domain.ConfirmacaoInvalidaException;
 import com.caxinhabet.auth.domain.CpfJaCadastradoException;
 import com.caxinhabet.auth.domain.CredenciaisInvalidasException;
 import com.caxinhabet.auth.domain.EmailJaCadastradoException;
+import com.caxinhabet.auth.domain.EmailNaoVerificadoException;
+import com.caxinhabet.auth.domain.SenhaAtualIncorretaException;
 import com.caxinhabet.auth.domain.TokenInvalidoException;
 import com.caxinhabet.caixinha.domain.ApuracaoInvalidaException;
 import com.caxinhabet.caixinha.domain.CriacaoCaixinhaInvalidaException;
@@ -69,6 +74,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
 	private static final URI TYPE_CPF_JA_CADASTRADO =
 			URI.create("https://caixinha.bet/problems/cpf-ja-cadastrado");
+
+	private static final URI TYPE_EMAIL_NAO_VERIFICADO =
+			URI.create("https://caixinha.bet/problems/email-nao-verificado");
+
+	private static final URI TYPE_SENHA_ATUAL_INCORRETA =
+			URI.create("https://caixinha.bet/problems/senha-atual-incorreta");
+
+	private static final URI TYPE_ARQUIVO_INVALIDO =
+			URI.create("https://caixinha.bet/problems/arquivo-invalido");
+
+	private static final URI TYPE_ARQUIVO_MUITO_GRANDE =
+			URI.create("https://caixinha.bet/problems/arquivo-muito-grande");
+
+	private static final URI TYPE_CONFIRMACAO_INVALIDA =
+			URI.create("https://caixinha.bet/problems/confirmacao-invalida");
 
 	private static final URI TYPE_CAIXINHA_INVALIDA =
 			URI.create("https://caixinha.bet/problems/caixinha-invalida");
@@ -183,6 +203,75 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 				ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problem.setType(TYPE_CPF_JA_CADASTRADO);
 		problem.setTitle("CPF já cadastrado");
+		return problem;
+	}
+
+	/**
+	 * Login com e-mail ainda não verificado (Minha Conta, 2026-05). 403 com
+	 * extensão {@code email} para o front exibir o CTA "reenviar verificação"
+	 * sem precisar reler do form.
+	 */
+	@ExceptionHandler(EmailNaoVerificadoException.class)
+	public ProblemDetail handleEmailNaoVerificado(EmailNaoVerificadoException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(
+						HttpStatus.FORBIDDEN, "Confirme seu e-mail antes de entrar.");
+		problem.setType(TYPE_EMAIL_NAO_VERIFICADO);
+		problem.setTitle("E-mail não verificado");
+		problem.setProperty("email", ex.email());
+		return problem;
+	}
+
+	/**
+	 * Troca de senha logada com senha atual incorreta (Minha Conta, 2026-05).
+	 * 401 com {@code type} próprio para o front distinguir do 401 de login.
+	 */
+	@ExceptionHandler(SenhaAtualIncorretaException.class)
+	public ProblemDetail handleSenhaAtualIncorreta(SenhaAtualIncorretaException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+		problem.setType(TYPE_SENHA_ATUAL_INCORRETA);
+		problem.setTitle("Senha atual incorreta");
+		return problem;
+	}
+
+	/**
+	 * Upload de foto com mime fora dos aceitos (Minha Conta, 2026-05). 415 —
+	 * o status correto do RFC 7231 para "tipo de mídia não suportado".
+	 */
+	@ExceptionHandler(ArquivoInvalidoException.class)
+	public ProblemDetail handleArquivoInvalido(ArquivoInvalidoException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(
+						HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getMessage());
+		problem.setType(TYPE_ARQUIVO_INVALIDO);
+		problem.setTitle("Tipo de arquivo inválido");
+		return problem;
+	}
+
+	/**
+	 * Upload de foto maior que o limite (Minha Conta, 2026-05). 413 —
+	 * "Payload Too Large".
+	 */
+	@ExceptionHandler(ArquivoMuitoGrandeException.class)
+	public ProblemDetail handleArquivoMuitoGrande(ArquivoMuitoGrandeException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.PAYLOAD_TOO_LARGE, ex.getMessage());
+		problem.setType(TYPE_ARQUIVO_MUITO_GRANDE);
+		problem.setTitle("Arquivo muito grande");
+		return problem;
+	}
+
+	/**
+	 * Confirmação textual ausente/incorreta em operação destrutiva (Minha
+	 * Conta, 2026-05). 400 + type próprio.
+	 */
+	@ExceptionHandler(ConfirmacaoInvalidaException.class)
+	public ProblemDetail handleConfirmacaoInvalida(ConfirmacaoInvalidaException ex) {
+		ProblemDetail problem =
+				ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problem.setType(TYPE_CONFIRMACAO_INVALIDA);
+		problem.setTitle("Confirmação inválida");
 		return problem;
 	}
 
