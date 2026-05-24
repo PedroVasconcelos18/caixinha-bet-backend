@@ -42,20 +42,26 @@ spring:
       max-file-size: 3MB
       max-request-size: 3MB
 
-  # Mail (Story 2.4). Em dev fica vazio (sender=log); em produção configurar
-  # via env (SMTP_HOST/PORT/USER/PASSWORD). Provedores típicos: SendGrid,
-  # Mailgun, AWS SES — Pedro decide na hora do deploy.
+  # Mail (Resend SMTP relay, decisão 2026-05-23). Defaults apontam para
+  # o Resend; basta setar SMTP_PASSWORD=<RESEND_API_KEY> em .env e mudar
+  # algum *_SENDER para "smtp". Em dev sem .env, tudo continua "log".
+  #
+  # 465 + ssl.enable=true (SMTPS implícito) é a configuração recomendada
+  # pelo Resend — mais simples que 587+STARTTLS. NÃO misturar starttls
+  # com 465 (causa handshake bug em algumas redes).
   mail:
-    host: ${SMTP_HOST:}
-    port: ${SMTP_PORT:587}
-    username: ${SMTP_USER:}
+    host: ${SMTP_HOST:smtp.resend.com}
+    port: ${SMTP_PORT:465}
+    username: ${SMTP_USER:resend}
     password: ${SMTP_PASSWORD:}
     properties:
       mail:
         smtp:
           auth: true
-          starttls:
+          ssl:
             enable: true
+          starttls:
+            enable: false
 
 # Configuração do app (Story 2.1).
 # public-base-url é a URL do FRONT (não da API). O magic link enviado por
