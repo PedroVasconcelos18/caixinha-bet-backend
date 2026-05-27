@@ -43,8 +43,11 @@ spring:
       max-request-size: 3MB
 
   # Mail (Story 2.4). Em dev fica vazio (sender=log); em produção configurar
-  # via env (SMTP_HOST/PORT/USER/PASSWORD). Provedores típicos: SendGrid,
-  # Mailgun, AWS SES — Pedro decide na hora do deploy.
+  # via env (SMTP_HOST/PORT/USER/PASSWORD).
+  # Provedor escolhido: Resend (smtp.resend.com:587, STARTTLS, user literal
+  # `resend`, password = API key gerada em resend.com/api-keys).
+  # `EMAIL_FROM` precisa estar em domínio verificado em resend.com/domains —
+  # senão o envio é rejeitado pelo provedor.
   mail:
     host: ${SMTP_HOST:}
     port: ${SMTP_PORT:587}

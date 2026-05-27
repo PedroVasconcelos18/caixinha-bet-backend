@@ -245,9 +245,20 @@ Convidar Participantes por e-mail (FR-4). Resumo:
   registerSynchronization(afterCommit)` dispara o sender APÓS a tx
   commitar. Falha SMTP NÃO reverte a criação/convite — log error e segue.
 - **Limite:** `@Size(max=50)` por chamada. Bolão típico é 5-20; 50 dá folga.
-- **Provedor SMTP em produção:** ainda em aberto (Pedro escolhe entre
-  SendGrid, Mailgun, AWS SES no deploy). Hoje `application.yml` só prepara
-  `spring.mail.*` via env vars (vazio = dev `log`).
+- **Provedor SMTP em produção:** **Resend** (decisão 2026-05-26). Config
+  no `.env` real:
+  - `SMTP_HOST=smtp.resend.com`
+  - `SMTP_PORT=587` (STARTTLS — casa com o `spring.mail.properties` do
+    `application.yml`)
+  - `SMTP_USER=resend` (literal, igual para todo mundo)
+  - `SMTP_PASSWORD=re_xxx` (API key gerada em `resend.com/api-keys`)
+  - `EMAIL_FROM=<conta>@<domínio>` — o **domínio precisa estar verificado**
+    em `resend.com/domains` (registros DNS de SPF/DKIM publicados); sem
+    isso o provedor rejeita o envio.
+
+  Nenhum adapter dedicado a Resend existe — `JavaMailSender` + os
+  `Smtp*EmailSender` já cobrem (Resend é SMTP padrão). Trocar de
+  provedor no futuro = trocar as 4 vars acima, zero código.
 - **Health do mail desabilitado**: `management.health.mail.enabled=false`
   — SMTP é dependência soft, não deve derrubar `/actuator/health`.
 

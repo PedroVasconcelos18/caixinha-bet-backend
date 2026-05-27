@@ -2,7 +2,9 @@ package com.caxinhabet.shared.config;
 
 import com.caxinhabet.auth.adapter.session.SessaoStore;
 import com.caxinhabet.auth.adapter.web.SessaoCookieAuthenticationFilter;
+import java.util.Arrays;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -55,13 +57,23 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 class SecurityConfig {
 
+	/**
+	 * Origens permitidas pelo CORS, lidas de {@code app.cors.allowed-origins}
+	 * (CSV). Default {@code http://localhost:3000} preserva o dev local. Em
+	 * produção, setar para o domínio público do front (ex.: domínio Vercel).
+	 * NUNCA usar {@code *} — com {@code allowCredentials=true} o navegador
+	 * recusa, e o Spring Security falharia silenciosamente.
+	 */
+	@Value("${app.cors.allowed-origins:http://localhost:3000}")
+	private String allowedOriginsCsv;
+
 	@Bean
 	SecurityFilterChain caixinhaBetSecurity(HttpSecurity http, SessaoStore sessaoStore)
 			throws Exception {
 		SessaoCookieAuthenticationFilter sessaoFilter =
 				new SessaoCookieAuthenticationFilter(sessaoStore);
 
-		http.cors(cors -> cors.configurationSource(corsConfig()))
+		http.cors(cors -> cors.configurationSource(corsConfig(allowedOriginsCsv)))
 				.csrf(csrf -> csrf.disable())
 				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.exceptionHandling(
@@ -90,11 +102,18 @@ class SecurityConfig {
 		return http.build();
 	}
 
-	private static UrlBasedCorsConfigurationSource corsConfig() {
+	private static UrlBasedCorsConfigurationSource corsConfig(String allowedOriginsCsv) {
 		CorsConfiguration cors = new CorsConfiguration();
-		// Em dev: front em http://localhost:3000. Para produção, ler de
-		// app.public-base-url (Story 2.1) — TODO endurecer quando subir.
-		cors.setAllowedOrigins(List.of("http://localhost:3000"));
+		List<String> origens =
+				Arrays.stream(allowedOriginsCsv.split(","))
+						.map(String::trim)
+						.filter(s -> !s.isEmpty())
+						.toList();
+		if (origens.isEmpty()) {
+			throw new IllegalStateException(
+					"app.cors.allowed-origins vazio — configure o domínio do front (ex.: https://app.caixinha.bet)");
+		}
+		cors.setAllowedOrigins(origens);
 		cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 		cors.setAllowedHeaders(List.of("Content-Type", "Accept"));
 		cors.setAllowCredentials(true);
