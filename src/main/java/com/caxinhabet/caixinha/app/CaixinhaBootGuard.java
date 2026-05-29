@@ -35,9 +35,9 @@ public class CaixinhaBootGuard {
 	}
 
 	private static void assertSender(String chave, String sender) {
-		if (!"log".equals(sender) && !"smtp".equals(sender)) {
+		if (!"log".equals(sender) && !"smtp".equals(sender) && !"resend".equals(sender)) {
 			throw new IllegalStateException(
-					chave + "='" + sender + "' não suportado (aceitos: 'log', 'smtp')");
+					chave + "='" + sender + "' não suportado (aceitos: 'log', 'smtp', 'resend')");
 		}
 	}
 

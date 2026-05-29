@@ -42,12 +42,13 @@ spring:
       max-file-size: 3MB
       max-request-size: 3MB
 
-  # Mail (Story 2.4). Em dev fica vazio (sender=log); em produção configurar
-  # via env (SMTP_HOST/PORT/USER/PASSWORD).
-  # Provedor escolhido: Resend (smtp.resend.com:465, SSL, user literal
-  # `resend`, password = API key gerada em resend.com/api-keys).
-  # `EMAIL_FROM` precisa estar em domínio verificado em resend.com/domains —
-  # senão o envio é rejeitado pelo provedor.
+  # Mail SMTP (Story 2.4). Usado quando *.sender=smtp. ATENÇÃO: PaaS como
+  # Railway BLOQUEIAM portas SMTP de saída (25/465/587) → "Connection timed
+  # out". Em produção nesses hosts use *.sender=resend (API HTTP, porta 443,
+  # ver bloco `resend:` abaixo). O SMTP fica aqui para dev/hosts sem bloqueio.
+  # Provedor: Resend (smtp.resend.com:465, SSL, user literal `resend`,
+  # password = API key). EMAIL_FROM precisa estar em domínio verificado em
+  # resend.com/domains — senão o envio é rejeitado.
   mail:
     host: ${SMTP_HOST:}
     # 465 = SMTPS implícito (SSL). É a porta que o Resend recomenda e que
@@ -71,6 +72,14 @@ spring:
           connectiontimeout: ${SMTP_TIMEOUT_MS:10000}
           timeout: ${SMTP_TIMEOUT_MS:10000}
           writetimeout: ${SMTP_TIMEOUT_MS:10000}
+
+# Resend via API HTTP (porta 443). Usado pelos adapters Resend*EmailSender
+# quando *.sender=resend — caminho recomendado em PaaS que bloqueiam SMTP
+# (Railway/Render/Fly). api-key = mesma key do painel resend.com/api-keys
+# (env RESEND_API_KEY). EMAIL_FROM precisa estar em domínio verificado.
+resend:
+  api-key: ${RESEND_API_KEY:}
+  base-url: ${RESEND_BASE_URL:https://api.resend.com}
 
 # Configuração do app (Story 2.1).
 # public-base-url é a URL do FRONT (não da API). O magic link enviado por

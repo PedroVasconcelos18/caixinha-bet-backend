@@ -18,11 +18,11 @@ public class BootGuard {
 
 	public BootGuard(AuthProperties props) {
 		String sender = props.getMagicLink().getSender();
-		if (!"log".equals(sender) && !"smtp".equals(sender)) {
+		if (!"log".equals(sender) && !"smtp".equals(sender) && !"resend".equals(sender)) {
 			throw new IllegalStateException(
 					"auth.magic-link.sender='"
 							+ sender
-							+ "' não suportado (aceitos: 'log', 'smtp' — Story 2.4)");
+							+ "' não suportado (aceitos: 'log', 'smtp', 'resend')");
 		}
 		if (props.getMagicLink().getTtlMinutos() <= 0) {
 			throw new IllegalStateException(
