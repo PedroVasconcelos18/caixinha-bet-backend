@@ -36,7 +36,7 @@ public class SmtpMagicLinkSender implements MagicLinkSender {
 
 	public SmtpMagicLinkSender(
 			JavaMailSender mailSender,
-			@Value("${auth.magic-link.email-from:caixinha@caixinha.bet}") String emailFrom) {
+			@Value("${auth.magic-link.email-from:noreply@caixinhabet.com}") String emailFrom) {
 		this.mailSender = mailSender;
 		this.emailFrom = emailFrom;
 	}

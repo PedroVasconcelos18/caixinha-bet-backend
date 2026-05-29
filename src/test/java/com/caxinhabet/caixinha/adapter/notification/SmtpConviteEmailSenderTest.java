@@ -24,7 +24,7 @@ class SmtpConviteEmailSenderTest {
 	@DisplayName("send é chamado com from, to, subject e body corretos (tom NFR-6)")
 	void enviaCorretamente() {
 		JavaMailSender mailSender = Mockito.mock(JavaMailSender.class);
-		SmtpConviteEmailSender sender = new SmtpConviteEmailSender(mailSender, "noreply@caixinha.bet");
+		SmtpConviteEmailSender sender = new SmtpConviteEmailSender(mailSender, "noreply@caixinhabet.com");
 
 		ConviteEmail c =
 				new ConviteEmail(
@@ -41,7 +41,7 @@ class SmtpConviteEmailSenderTest {
 		verify(mailSender, times(1)).send(captor.capture());
 
 		SimpleMailMessage msg = captor.getValue();
-		assertThat(msg.getFrom()).isEqualTo("noreply@caixinha.bet");
+		assertThat(msg.getFrom()).isEqualTo("noreply@caixinhabet.com");
 		assertThat(msg.getTo()).containsExactly("alice@local");
 		assertThat(msg.getSubject()).contains("rafael@local").contains("caixinha");
 		assertThat(msg.getText())
@@ -60,7 +60,7 @@ class SmtpConviteEmailSenderTest {
 		doThrow(new RuntimeException("SMTP fora do ar"))
 				.when(mailSender)
 				.send(any(SimpleMailMessage.class));
-		SmtpConviteEmailSender sender = new SmtpConviteEmailSender(mailSender, "noreply@caixinha.bet");
+		SmtpConviteEmailSender sender = new SmtpConviteEmailSender(mailSender, "noreply@caixinhabet.com");
 
 		ConviteEmail c =
 				new ConviteEmail(

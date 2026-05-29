@@ -48,7 +48,7 @@ public class SmtpCancelamentoEmailSender implements CancelamentoEmailSender {
 
 	public SmtpCancelamentoEmailSender(
 			JavaMailSender mailSender,
-			@Value("${caixinha.cancelamento.email-from:caixinha@caixinha.bet}")
+			@Value("${caixinha.cancelamento.email-from:noreply@caixinhabet.com}")
 					String emailFrom) {
 		this.mailSender = mailSender;
 		this.emailFrom = emailFrom;

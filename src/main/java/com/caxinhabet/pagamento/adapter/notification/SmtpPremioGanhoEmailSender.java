@@ -38,7 +38,7 @@ public class SmtpPremioGanhoEmailSender implements PremioGanhoEmailSender {
 
 	public SmtpPremioGanhoEmailSender(
 			JavaMailSender mailSender,
-			@Value("${caixinha.premio-ganho.email-from:caixinha@caixinha.bet}")
+			@Value("${caixinha.premio-ganho.email-from:noreply@caixinhabet.com}")
 					String emailFrom) {
 		this.mailSender = mailSender;
 		this.emailFrom = emailFrom;

@@ -93,7 +93,7 @@ public class CaixinhaBootGuard {
 
 		public static class Convite {
 			private String sender = "log";
-			private String emailFrom = "caixinha@caixinha.bet";
+			private String emailFrom = "noreply@caixinhabet.com";
 
 			public String getSender() {
 				return sender;
@@ -115,7 +115,7 @@ public class CaixinhaBootGuard {
 		/** Story 3.1: aviso "mínimo atingido — hora de pagar" (FR-6). */
 		public static class MinimoAtingido {
 			private String sender = "log";
-			private String emailFrom = "caixinha@caixinha.bet";
+			private String emailFrom = "noreply@caixinhabet.com";
 
 			public String getSender() {
 				return sender;
@@ -137,7 +137,7 @@ public class CaixinhaBootGuard {
 		/** Story 3.4: aviso de Formação / Reversão da Caixinha (FR-9). */
 		public static class Formacao {
 			private String sender = "log";
-			private String emailFrom = "caixinha@caixinha.bet";
+			private String emailFrom = "noreply@caixinhabet.com";
 
 			public String getSender() {
 				return sender;
@@ -159,7 +159,7 @@ public class CaixinhaBootGuard {
 		/** Story 4.3: aviso "você ganhou" ao Ganhador (FR-13). */
 		public static class PremioGanho {
 			private String sender = "log";
-			private String emailFrom = "caixinha@caixinha.bet";
+			private String emailFrom = "noreply@caixinhabet.com";
 
 			public String getSender() {
 				return sender;
@@ -181,7 +181,7 @@ public class CaixinhaBootGuard {
 		/** Story 5.1: aviso de cancelamento da Caixinha (FR-11). */
 		public static class Cancelamento {
 			private String sender = "log";
-			private String emailFrom = "caixinha@caixinha.bet";
+			private String emailFrom = "noreply@caixinhabet.com";
 
 			public String getSender() {
 				return sender;

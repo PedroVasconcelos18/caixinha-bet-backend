@@ -52,7 +52,7 @@ public class SmtpConviteEmailSender implements ConviteEmailSender {
 
 	public SmtpConviteEmailSender(
 			JavaMailSender mailSender,
-			@Value("${caixinha.convite.email-from:caixinha@caixinha.bet}") String emailFrom) {
+			@Value("${caixinha.convite.email-from:noreply@caixinhabet.com}") String emailFrom) {
 		this.mailSender = mailSender;
 		this.emailFrom = emailFrom;
 	}

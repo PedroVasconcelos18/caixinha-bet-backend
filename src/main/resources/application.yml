@@ -83,7 +83,7 @@ auth:
     # Story 2.4: ampliado para aceitar "smtp" (SmtpMagicLinkSender ativo).
     # Default "log" (LogMagicLinkSender). Em produção: setar AUTH_MAGIC_LINK_SENDER=smtp.
     sender: ${AUTH_MAGIC_LINK_SENDER:log}
-    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+    email-from: ${EMAIL_FROM:noreply@caixinhabet.com}
   sessao:
     ttl-dias: 7
 
@@ -96,14 +96,14 @@ auth:
 caixinha:
   convite:
     sender: ${CAIXINHA_CONVITE_SENDER:log}
-    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+    email-from: ${EMAIL_FROM:noreply@caixinhabet.com}
   minimo-atingido:
     sender: ${CAIXINHA_MINIMO_ATINGIDO_SENDER:log}
-    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+    email-from: ${EMAIL_FROM:noreply@caixinhabet.com}
   # Story 3.4: aviso de Formação / Reversão da Caixinha (FR-9).
   formacao:
     sender: ${CAIXINHA_FORMACAO_SENDER:log}
-    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+    email-from: ${EMAIL_FROM:noreply@caixinhabet.com}
   # Story 3.6: job de reconciliação contra o extrato do Provedor (NFR-2).
   # intervalo-ms: período entre rodadas (fixedDelay — conta do fim da
   # rodada anterior). atraso-inicial-ms: espera antes da 1ª rodada (deixa
@@ -114,11 +114,11 @@ caixinha:
   # Story 4.3: aviso "você ganhou" ao Ganhador no momento da apuração.
   premio-ganho:
     sender: ${CAIXINHA_PREMIO_GANHO_SENDER:log}
-    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+    email-from: ${EMAIL_FROM:noreply@caixinhabet.com}
   # Story 5.1: aviso de cancelamento da Caixinha (FR-11).
   cancelamento:
     sender: ${CAIXINHA_CANCELAMENTO_SENDER:log}
-    email-from: ${EMAIL_FROM:caixinha@caixinha.bet}
+    email-from: ${EMAIL_FROM:noreply@caixinhabet.com}
 
 # Configuração do PSP (Story 1.4).
 # Sandbox por default (R-7 mitigação: trocabilidade de ambiente sem código).

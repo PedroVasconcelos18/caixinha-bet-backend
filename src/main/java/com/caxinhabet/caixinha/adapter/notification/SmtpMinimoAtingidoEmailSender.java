@@ -48,7 +48,7 @@ public class SmtpMinimoAtingidoEmailSender implements MinimoAtingidoEmailSender 
 
 	public SmtpMinimoAtingidoEmailSender(
 			JavaMailSender mailSender,
-			@Value("${caixinha.minimo-atingido.email-from:caixinha@caixinha.bet}")
+			@Value("${caixinha.minimo-atingido.email-from:noreply@caixinhabet.com}")
 					String emailFrom) {
 		this.mailSender = mailSender;
 		this.emailFrom = emailFrom;

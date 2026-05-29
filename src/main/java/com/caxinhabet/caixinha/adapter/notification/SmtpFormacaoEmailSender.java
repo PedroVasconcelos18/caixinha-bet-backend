@@ -52,7 +52,7 @@ public class SmtpFormacaoEmailSender implements FormacaoEmailSender {
 
 	public SmtpFormacaoEmailSender(
 			JavaMailSender mailSender,
-			@Value("${caixinha.formacao.email-from:caixinha@caixinha.bet}")
+			@Value("${caixinha.formacao.email-from:noreply@caixinhabet.com}")
 					String emailFrom) {
 		this.mailSender = mailSender;
 		this.emailFrom = emailFrom;
