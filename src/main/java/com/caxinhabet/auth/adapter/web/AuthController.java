@@ -300,24 +300,32 @@ class AuthController {
 
 	private ResponseCookie montarCookieSessao(SessaoUsuario sessao) {
 		long maxAgeSegundos = Duration.ofDays(authProps.getSessao().getTtlDias()).toSeconds();
-		return ResponseCookie.from(COOKIE_SESSAO, sessao.idSessao())
-				.httpOnly(true)
-				.sameSite(authProps.getSessao().getCookieSameSite())
-				.secure(authProps.getSessao().isCookieSecure())
-				.path("/")
-				.maxAge(maxAgeSegundos)
-				.build();
+		return cookieBuilder(sessao.idSessao(), maxAgeSegundos).build();
 	}
 
-	/** Cookie de limpeza (logout / exclusão): mesmo SameSite/Secure, Max-Age=0. */
+	/** Cookie de limpeza (logout / exclusão): mesmos atributos, Max-Age=0. */
 	private ResponseCookie montarCookieLimpeza() {
-		return ResponseCookie.from(COOKIE_SESSAO, "")
-				.httpOnly(true)
-				.sameSite(authProps.getSessao().getCookieSameSite())
-				.secure(authProps.getSessao().isCookieSecure())
-				.path("/")
-				.maxAge(0)
-				.build();
+		return cookieBuilder("", 0).build();
+	}
+
+	/**
+	 * Builder comum dos cookies de sessão. Aplica {@code Domain} só quando
+	 * configurado — domain vazio deixa o cookie host-only (dev/mesma origem);
+	 * em prod {@code .caixinhabet.com} compartilha entre www e api.
+	 */
+	private ResponseCookie.ResponseCookieBuilder cookieBuilder(String valor, long maxAge) {
+		AuthProperties.Sessao s = authProps.getSessao();
+		ResponseCookie.ResponseCookieBuilder b =
+				ResponseCookie.from(COOKIE_SESSAO, valor)
+						.httpOnly(true)
+						.sameSite(s.getCookieSameSite())
+						.secure(s.isCookieSecure())
+						.path("/")
+						.maxAge(maxAge);
+		if (s.getCookieDomain() != null && !s.getCookieDomain().isBlank()) {
+			b.domain(s.getCookieDomain());
+		}
+		return b;
 	}
 
 	static String lerCookieSessao(HttpServletRequest req) {

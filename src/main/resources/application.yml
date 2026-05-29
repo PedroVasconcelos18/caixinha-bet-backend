@@ -115,6 +115,11 @@ auth:
     # porque atrás do proxy TLS do Railway a request chega como HTTP.
     cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    # Domain do cookie. Vazio (default) = host-only. Em prod com front e API
+    # em subdomínios do mesmo apex (www.caixinhabet.com x api.caixinhabet.com):
+    # AUTH_COOKIE_DOMAIN=.caixinhabet.com — compartilha o cookie, e o middleware
+    # do front passa a enxergá-lo. Com mesmo apex dá pra usar SameSite=Lax.
+    cookie-domain: ${AUTH_COOKIE_DOMAIN:}
 
 # Configuração do módulo caixinha (Stories 2.4 + 3.1).
 # convite.sender: "log" (default — LogConviteEmailSender, dev) ou "smtp"

@@ -83,6 +83,16 @@ public class AuthProperties {
 		 */
 		private boolean cookieSecure = false;
 
+		/**
+		 * Domain do cookie. Vazio (default) = host-only: o cookie vale só para o
+		 * host que respondeu (dev/mesma origem). Em prod com front e API em
+		 * subdomínios do mesmo apex (www.caixinhabet.com x api.caixinhabet.com),
+		 * setar {@code .caixinhabet.com} para que o cookie seja compartilhado —
+		 * sem isso o middleware do front (host-only no domínio da API) nunca
+		 * enxerga o cookie e o login "volta para a tela de entrar".
+		 */
+		private String cookieDomain = "";
+
 		public int getTtlDias() {
 			return ttlDias;
 		}
@@ -105,6 +115,14 @@ public class AuthProperties {
 
 		public void setCookieSecure(boolean cookieSecure) {
 			this.cookieSecure = cookieSecure;
+		}
+
+		public String getCookieDomain() {
+			return cookieDomain;
+		}
+
+		public void setCookieDomain(String cookieDomain) {
+			this.cookieDomain = cookieDomain;
 		}
 	}
 
