@@ -125,10 +125,9 @@ class AuthController {
 	}
 
 	@PostMapping("/login")
-	ResponseEntity<MeResponse> login(
-			@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
+	ResponseEntity<MeResponse> login(@Valid @RequestBody LoginRequest req) {
 		SessaoUsuario sessao = autenticar.executar(req.email(), req.senha());
-		return respostaComSessao(sessao, httpReq);
+		return respostaComSessao(sessao);
 	}
 
 	@PostMapping("/recuperar-senha")
@@ -139,17 +138,16 @@ class AuthController {
 	}
 
 	@PostMapping("/redefinir-senha")
-	ResponseEntity<MeResponse> redefinirSenha(
-			@Valid @RequestBody RedefinirSenhaRequest req, HttpServletRequest httpReq) {
+	ResponseEntity<MeResponse> redefinirSenha(@Valid @RequestBody RedefinirSenhaRequest req) {
 		SessaoUsuario sessao = redefinirSenha.executar(req.token(), req.senha());
-		return respostaComSessao(sessao, httpReq);
+		return respostaComSessao(sessao);
 	}
 
 	@PostMapping("/verificar-email/confirmar")
 	ResponseEntity<MeResponse> confirmarVerificacao(
-			@Valid @RequestBody ConfirmarVerificacaoRequest req, HttpServletRequest httpReq) {
+			@Valid @RequestBody ConfirmarVerificacaoRequest req) {
 		SessaoUsuario sessao = confirmarVerificacao.executar(req.token());
-		return respostaComSessao(sessao, httpReq);
+		return respostaComSessao(sessao);
 	}
 
 	@PostMapping("/verificar-email/reenviar")
@@ -254,14 +252,7 @@ class AuthController {
 		String idSessao = lerCookieSessao(httpReq);
 		excluirConta.executar(u.getId(), idSessao, req.confirmacao());
 
-		ResponseCookie cookie =
-				ResponseCookie.from(COOKIE_SESSAO, "")
-						.httpOnly(true)
-						.sameSite("Lax")
-						.secure(httpReq.isSecure())
-						.path("/")
-						.maxAge(0)
-						.build();
+		ResponseCookie cookie = montarCookieLimpeza();
 		return ResponseEntity.noContent()
 				.header(HttpHeaders.SET_COOKIE, cookie.toString())
 				.build();
@@ -273,22 +264,14 @@ class AuthController {
 		if (idSessao != null) {
 			sessaoStore.invalidar(idSessao);
 		}
-		ResponseCookie cookie =
-				ResponseCookie.from(COOKIE_SESSAO, "")
-						.httpOnly(true)
-						.sameSite("Lax")
-						.secure(httpReq.isSecure())
-						.path("/")
-						.maxAge(0)
-						.build();
+		ResponseCookie cookie = montarCookieLimpeza();
 		return ResponseEntity.noContent()
 				.header(HttpHeaders.SET_COOKIE, cookie.toString())
 				.build();
 	}
 
 	/** Monta a resposta 200 com o corpo {@link MeResponse} + cookie de sessão. */
-	private ResponseEntity<MeResponse> respostaComSessao(
-			SessaoUsuario sessao, HttpServletRequest httpReq) {
+	private ResponseEntity<MeResponse> respostaComSessao(SessaoUsuario sessao) {
 		UsuarioEntity u =
 				usuarios
 						.findByEmail(sessao.email())
@@ -297,7 +280,7 @@ class AuthController {
 										new ResponseStatusException(
 												HttpStatus.INTERNAL_SERVER_ERROR,
 												"Sessão aberta para usuário inexistente."));
-		ResponseCookie cookie = montarCookieSessao(sessao, httpReq.isSecure());
+		ResponseCookie cookie = montarCookieSessao(sessao);
 		return ResponseEntity.ok()
 				.header(HttpHeaders.SET_COOKIE, cookie.toString())
 				.body(MeResponse.de(u));
@@ -315,14 +298,25 @@ class AuthController {
 										HttpStatus.UNAUTHORIZED, "Usuário não encontrado."));
 	}
 
-	private ResponseCookie montarCookieSessao(SessaoUsuario sessao, boolean isSecure) {
+	private ResponseCookie montarCookieSessao(SessaoUsuario sessao) {
 		long maxAgeSegundos = Duration.ofDays(authProps.getSessao().getTtlDias()).toSeconds();
 		return ResponseCookie.from(COOKIE_SESSAO, sessao.idSessao())
 				.httpOnly(true)
-				.sameSite("Lax")
-				.secure(isSecure)
+				.sameSite(authProps.getSessao().getCookieSameSite())
+				.secure(authProps.getSessao().isCookieSecure())
 				.path("/")
 				.maxAge(maxAgeSegundos)
+				.build();
+	}
+
+	/** Cookie de limpeza (logout / exclusão): mesmo SameSite/Secure, Max-Age=0. */
+	private ResponseCookie montarCookieLimpeza() {
+		return ResponseCookie.from(COOKIE_SESSAO, "")
+				.httpOnly(true)
+				.sameSite(authProps.getSessao().getCookieSameSite())
+				.secure(authProps.getSessao().isCookieSecure())
+				.path("/")
+				.maxAge(0)
 				.build();
 	}
 

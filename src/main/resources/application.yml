@@ -107,6 +107,14 @@ auth:
     email-from: ${EMAIL_FROM:noreply@caixinhabet.com}
   sessao:
     ttl-dias: 7
+    # Atributos do cookie de sessão. Dev (front e API na mesma origem):
+    # SameSite=Lax + secure=false (HTTP). PROD com front e API em domínios
+    # diferentes (cross-site, ex.: www.caixinhabet.com x Railway): exige
+    # SameSite=None + secure=true, senão o navegador NÃO envia o cookie no
+    # fetch e o login "pisca e volta". secure é explícito (não isSecure())
+    # porque atrás do proxy TLS do Railway a request chega como HTTP.
+    cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
 
 # Configuração do módulo caixinha (Stories 2.4 + 3.1).
 # convite.sender: "log" (default — LogConviteEmailSender, dev) ou "smtp"

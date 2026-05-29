@@ -68,12 +68,43 @@ public class AuthProperties {
 	public static class Sessao {
 		private int ttlDias = 7;
 
+		/**
+		 * SameSite do cookie de sessão. {@code Lax} (default) serve dev/mesma
+		 * origem; {@code None} é obrigatório para front e API em domínios
+		 * diferentes (cross-site) — e exige {@link #cookieSecure} true.
+		 */
+		private String cookieSameSite = "Lax";
+
+		/**
+		 * Atributo {@code Secure} do cookie. Explícito (não derivado de
+		 * {@code request.isSecure()}) porque atrás do proxy TLS do Railway a
+		 * request chega como HTTP. Deve ser true em prod (HTTPS) e é
+		 * obrigatório quando {@link #cookieSameSite} é {@code None}.
+		 */
+		private boolean cookieSecure = false;
+
 		public int getTtlDias() {
 			return ttlDias;
 		}
 
 		public void setTtlDias(int ttlDias) {
 			this.ttlDias = ttlDias;
+		}
+
+		public String getCookieSameSite() {
+			return cookieSameSite;
+		}
+
+		public void setCookieSameSite(String cookieSameSite) {
+			this.cookieSameSite = cookieSameSite;
+		}
+
+		public boolean isCookieSecure() {
+			return cookieSecure;
+		}
+
+		public void setCookieSecure(boolean cookieSecure) {
+			this.cookieSecure = cookieSecure;
 		}
 	}
 
