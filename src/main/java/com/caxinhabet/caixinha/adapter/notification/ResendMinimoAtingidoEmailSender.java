@@ -25,16 +25,6 @@ public class ResendMinimoAtingidoEmailSender implements MinimoAtingidoEmailSende
 	private static final Logger log =
 			LoggerFactory.getLogger(ResendMinimoAtingidoEmailSender.class);
 
-	private static final String CORPO_TEMPLATE =
-			"✅ Mínimo atingido! A caixinha '%s' (%s) liberou o pagamento.\n\n"
-					+ "- Valor do ingresso: %s\n\n"
-					+ "Bora pagar? É PIX direto no app — em 1 minuto seu lugar está garantido:\n"
-					+ "%s\n\n"
-					+ "Lembrete: o dinheiro fica no provedor de pagamento (Asaas), não com a"
-					+ " gente. Se a caixinha não der certo, o estorno é automático.\n\n"
-					+ "Até já,\n"
-					+ "Caixinha Bet";
-
 	private final ResendEmailClient resend;
 	private final String emailFrom;
 
@@ -52,13 +42,9 @@ public class ResendMinimoAtingidoEmailSender implements MinimoAtingidoEmailSende
 			resend.enviar(
 					emailFrom,
 					e.destinatario(),
-					"Mínimo atingido! Hora de pagar — " + e.tituloCaixinha(),
-					String.format(
-							CORPO_TEMPLATE,
-							e.tituloCaixinha(),
-							e.confronto(),
-							e.valorIngressoFormatado(),
-							e.linkCaixinha()));
+					MinimoAtingidoEmails.assunto(e),
+					MinimoAtingidoEmails.html(e),
+					MinimoAtingidoEmails.texto(e));
 			log.info(
 					"Aviso 'mínimo atingido' Resend enviado para {} (caixinha={})",
 					e.destinatario(),

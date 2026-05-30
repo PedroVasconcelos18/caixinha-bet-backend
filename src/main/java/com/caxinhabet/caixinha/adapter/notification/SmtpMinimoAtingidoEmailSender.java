@@ -2,12 +2,13 @@ package com.caxinhabet.caixinha.adapter.notification;
 
 import com.caxinhabet.caixinha.domain.MinimoAtingidoEmail;
 import com.caxinhabet.caixinha.domain.MinimoAtingidoEmailSender;
+import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -33,16 +34,6 @@ public class SmtpMinimoAtingidoEmailSender implements MinimoAtingidoEmailSender 
 	private static final Logger log =
 			LoggerFactory.getLogger(SmtpMinimoAtingidoEmailSender.class);
 
-	private static final String CORPO_TEMPLATE =
-			"✅ Mínimo atingido! A caixinha '%s' (%s) liberou o pagamento.\n\n"
-					+ "- Valor do ingresso: %s\n\n"
-					+ "Bora pagar? É PIX direto no app — em 1 minuto seu lugar está garantido:\n"
-					+ "%s\n\n"
-					+ "Lembrete: o dinheiro fica no provedor de pagamento (Asaas), não com a"
-					+ " gente. Se a caixinha não der certo, o estorno é automático.\n\n"
-					+ "Até já,\n"
-					+ "Caixinha Bet";
-
 	private final JavaMailSender mailSender;
 	private final String emailFrom;
 
@@ -57,17 +48,12 @@ public class SmtpMinimoAtingidoEmailSender implements MinimoAtingidoEmailSender 
 	@Override
 	public void enviarAvisoMinimoAtingido(MinimoAtingidoEmail e) {
 		try {
-			SimpleMailMessage msg = new SimpleMailMessage();
-			msg.setFrom(emailFrom);
-			msg.setTo(e.destinatario());
-			msg.setSubject("Mínimo atingido! Hora de pagar — " + e.tituloCaixinha());
-			msg.setText(
-					String.format(
-							CORPO_TEMPLATE,
-							e.tituloCaixinha(),
-							e.confronto(),
-							e.valorIngressoFormatado(),
-							e.linkCaixinha()));
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+			h.setFrom(emailFrom);
+			h.setTo(e.destinatario());
+			h.setSubject(MinimoAtingidoEmails.assunto(e));
+			h.setText(MinimoAtingidoEmails.texto(e), MinimoAtingidoEmails.html(e));
 			mailSender.send(msg);
 			log.info(
 					"Aviso 'mínimo atingido' SMTP enviado para {} (caixinha={})",

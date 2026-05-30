@@ -25,18 +25,6 @@ public class ResendConviteEmailSender implements ConviteEmailSender {
 
 	private static final Logger log = LoggerFactory.getLogger(ResendConviteEmailSender.class);
 
-	private static final String CORPO_TEMPLATE =
-			"Oi! O %s montou uma caixinha do jogo %s e te convidou para participar.\n\n"
-					+ "- Valor do ingresso: %s\n"
-					+ "- Caixinha: %s\n\n"
-					+ "Aceita o convite e escolhe seu palpite:\n"
-					+ "%s\n\n"
-					+ "Ah, importante: este é um bolão entre amigos. O dinheiro fica num"
-					+ " provedor de pagamento licenciado (Asaas), nunca com a gente. Se"
-					+ " a caixinha não der certo, o estorno é automático.\n\n"
-					+ "Até já,\n"
-					+ "Caixinha Bet";
-
 	private final ResendEmailClient resend;
 	private final String emailFrom;
 
@@ -53,14 +41,9 @@ public class ResendConviteEmailSender implements ConviteEmailSender {
 			resend.enviar(
 					emailFrom,
 					c.destinatario(),
-					c.organizadorNome() + " te chamou para uma caixinha!",
-					String.format(
-							CORPO_TEMPLATE,
-							c.organizadorNome(),
-							c.confronto(),
-							c.valorIngressoFormatado(),
-							c.tituloCaixinha(),
-							c.linkConvite()));
+					ConviteEmails.assunto(c),
+					ConviteEmails.html(c),
+					ConviteEmails.texto(c));
 			log.info("Convite Resend enviado para {}", c.destinatario());
 		} catch (Exception e) {
 			log.error(

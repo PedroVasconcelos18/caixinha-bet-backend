@@ -2,12 +2,13 @@ package com.caxinhabet.caixinha.adapter.notification;
 
 import com.caxinhabet.caixinha.domain.ConviteEmail;
 import com.caxinhabet.caixinha.domain.ConviteEmailSender;
+import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -35,18 +36,6 @@ public class SmtpConviteEmailSender implements ConviteEmailSender {
 
 	private static final Logger log = LoggerFactory.getLogger(SmtpConviteEmailSender.class);
 
-	private static final String CORPO_TEMPLATE =
-			"Oi! O %s montou uma caixinha do jogo %s e te convidou para participar.\n\n"
-					+ "- Valor do ingresso: %s\n"
-					+ "- Caixinha: %s\n\n"
-					+ "Aceita o convite e escolhe seu palpite:\n"
-					+ "%s\n\n"
-					+ "Ah, importante: este é um bolão entre amigos. O dinheiro fica num"
-					+ " provedor de pagamento licenciado (Asaas), nunca com a gente. Se"
-					+ " a caixinha não der certo, o estorno é automático.\n\n"
-					+ "Até já,\n"
-					+ "Caixinha Bet";
-
 	private final JavaMailSender mailSender;
 	private final String emailFrom;
 
@@ -60,18 +49,12 @@ public class SmtpConviteEmailSender implements ConviteEmailSender {
 	@Override
 	public void enviarConvite(ConviteEmail c) {
 		try {
-			SimpleMailMessage msg = new SimpleMailMessage();
-			msg.setFrom(emailFrom);
-			msg.setTo(c.destinatario());
-			msg.setSubject(c.organizadorNome() + " te chamou para uma caixinha!");
-			msg.setText(
-					String.format(
-							CORPO_TEMPLATE,
-							c.organizadorNome(),
-							c.confronto(),
-							c.valorIngressoFormatado(),
-							c.tituloCaixinha(),
-							c.linkConvite()));
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+			h.setFrom(emailFrom);
+			h.setTo(c.destinatario());
+			h.setSubject(ConviteEmails.assunto(c));
+			h.setText(ConviteEmails.texto(c), ConviteEmails.html(c));
 			mailSender.send(msg);
 			log.info("Convite SMTP enviado para {}", c.destinatario());
 		} catch (Exception e) {

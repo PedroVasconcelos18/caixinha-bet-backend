@@ -2,12 +2,13 @@ package com.caxinhabet.caixinha.adapter.notification;
 
 import com.caxinhabet.caixinha.domain.FormacaoEmail;
 import com.caxinhabet.caixinha.domain.FormacaoEmailSender;
+import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,23 +31,6 @@ public class SmtpFormacaoEmailSender implements FormacaoEmailSender {
 	private static final Logger log =
 			LoggerFactory.getLogger(SmtpFormacaoEmailSender.class);
 
-	private static final String CORPO_FORMADA =
-			"🏆 É oficial: a caixinha '%s' (%s) está FORMADA!\n\n"
-					+ "Pagamentos suficientes confirmados — agora é esperar o jogo.\n"
-					+ "Acompanhe tudo aqui:\n%s\n\n"
-					+ "Boa sorte a todos!\n"
-					+ "Caixinha Bet";
-
-	private static final String CORPO_REVERTIDA =
-			"Aviso sobre a caixinha '%s' (%s).\n\n"
-					+ "Um pagamento foi estornado e a caixinha voltou a coletar"
-					+ " pagamentos — ela ainda NÃO está formada. Aquele aviso de"
-					+ " 'Caixinha Formada' que você recebeu antes fica retificado"
-					+ " por este.\n\n"
-					+ "Nada de errado da sua parte — é só o número de pagamentos"
-					+ " confirmados que mudou. Acompanhe aqui:\n%s\n\n"
-					+ "Caixinha Bet";
-
 	private final JavaMailSender mailSender;
 	private final String emailFrom;
 
@@ -61,19 +45,12 @@ public class SmtpFormacaoEmailSender implements FormacaoEmailSender {
 	@Override
 	public void enviarAvisoFormacao(FormacaoEmail e) {
 		try {
-			SimpleMailMessage msg = new SimpleMailMessage();
-			msg.setFrom(emailFrom);
-			msg.setTo(e.destinatario());
-			boolean formada = e.tipo() == FormacaoEmail.Tipo.FORMADA;
-			msg.setSubject(
-					(formada ? "🏆 Caixinha formada — " : "Atualização da caixinha — ")
-							+ e.tituloCaixinha());
-			msg.setText(
-					String.format(
-							formada ? CORPO_FORMADA : CORPO_REVERTIDA,
-							e.tituloCaixinha(),
-							e.confronto(),
-							e.linkCaixinha()));
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+			h.setFrom(emailFrom);
+			h.setTo(e.destinatario());
+			h.setSubject(FormacaoEmails.assunto(e));
+			h.setText(FormacaoEmails.texto(e), FormacaoEmails.html(e));
 			mailSender.send(msg);
 			log.info(
 					"Aviso de Formação ({}) SMTP enviado para {} (caixinha={})",

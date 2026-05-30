@@ -26,23 +26,6 @@ public class ResendFormacaoEmailSender implements FormacaoEmailSender {
 	private static final Logger log =
 			LoggerFactory.getLogger(ResendFormacaoEmailSender.class);
 
-	private static final String CORPO_FORMADA =
-			"🏆 É oficial: a caixinha '%s' (%s) está FORMADA!\n\n"
-					+ "Pagamentos suficientes confirmados — agora é esperar o jogo.\n"
-					+ "Acompanhe tudo aqui:\n%s\n\n"
-					+ "Boa sorte a todos!\n"
-					+ "Caixinha Bet";
-
-	private static final String CORPO_REVERTIDA =
-			"Aviso sobre a caixinha '%s' (%s).\n\n"
-					+ "Um pagamento foi estornado e a caixinha voltou a coletar"
-					+ " pagamentos — ela ainda NÃO está formada. Aquele aviso de"
-					+ " 'Caixinha Formada' que você recebeu antes fica retificado"
-					+ " por este.\n\n"
-					+ "Nada de errado da sua parte — é só o número de pagamentos"
-					+ " confirmados que mudou. Acompanhe aqui:\n%s\n\n"
-					+ "Caixinha Bet";
-
 	private final ResendEmailClient resend;
 	private final String emailFrom;
 
@@ -57,17 +40,12 @@ public class ResendFormacaoEmailSender implements FormacaoEmailSender {
 	@Override
 	public void enviarAvisoFormacao(FormacaoEmail e) {
 		try {
-			boolean formada = e.tipo() == FormacaoEmail.Tipo.FORMADA;
 			resend.enviar(
 					emailFrom,
 					e.destinatario(),
-					(formada ? "🏆 Caixinha formada — " : "Atualização da caixinha — ")
-							+ e.tituloCaixinha(),
-					String.format(
-							formada ? CORPO_FORMADA : CORPO_REVERTIDA,
-							e.tituloCaixinha(),
-							e.confronto(),
-							e.linkCaixinha()));
+					FormacaoEmails.assunto(e),
+					FormacaoEmails.html(e),
+					FormacaoEmails.texto(e));
 			log.info(
 					"Aviso de Formação ({}) Resend enviado para {} (caixinha={})",
 					e.tipo(),
