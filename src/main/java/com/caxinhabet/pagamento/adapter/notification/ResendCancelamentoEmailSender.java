@@ -26,22 +26,6 @@ public class ResendCancelamentoEmailSender implements CancelamentoEmailSender {
 	private static final Logger log =
 			LoggerFactory.getLogger(ResendCancelamentoEmailSender.class);
 
-	private static final String CORPO_COM_PAGAMENTO =
-			"A caixinha '%s' não fechou — não atingiu o número mínimo de"
-					+ " participantes no prazo.\n\n"
-					+ "Você pagou o ingresso, então já estamos devolvendo seu dinheiro"
-					+ " automaticamente, valor cheio, direto na origem do pagamento."
-					+ " Você não precisa fazer nada.\n\n"
-					+ "Acontece — quem sabe na próxima!\n"
-					+ "Caixinha Bet";
-
-	private static final String CORPO_SEM_PAGAMENTO =
-			"A caixinha '%s' não fechou — não atingiu o número mínimo de"
-					+ " participantes no prazo.\n\n"
-					+ "Como você ainda não tinha pago o ingresso, não há nada a"
-					+ " devolver. Fica para a próxima!\n\n"
-					+ "Caixinha Bet";
-
 	private final ResendEmailClient resend;
 	private final String emailFrom;
 
@@ -59,10 +43,9 @@ public class ResendCancelamentoEmailSender implements CancelamentoEmailSender {
 			resend.enviar(
 					emailFrom,
 					e.destinatario(),
-					"A caixinha '" + e.tituloCaixinha() + "' não fechou",
-					String.format(
-							e.houvePagamento() ? CORPO_COM_PAGAMENTO : CORPO_SEM_PAGAMENTO,
-							e.tituloCaixinha()));
+					CancelamentoEmails.assunto(e),
+					CancelamentoEmails.html(e),
+					CancelamentoEmails.texto(e));
 			log.info(
 					"Aviso de cancelamento Resend enviado para {} (caixinha={})",
 					e.destinatario(),

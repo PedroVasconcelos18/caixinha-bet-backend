@@ -25,13 +25,6 @@ public class ResendPremioGanhoEmailSender implements PremioGanhoEmailSender {
 	private static final Logger log =
 			LoggerFactory.getLogger(ResendPremioGanhoEmailSender.class);
 
-	private static final String CORPO =
-			"🎉 BOA! Você é um dos Ganhadores da caixinha '%s'!\n\n"
-					+ "Seu prêmio: R$ %s\n\n"
-					+ "Entre no app para confirmar sua chave PIX e receber:\n%s\n\n"
-					+ "O dinheiro só sai depois que você aceitar — está tudo no seu controle.\n"
-					+ "Caixinha Bet";
-
 	private final ResendEmailClient resend;
 	private final String emailFrom;
 
@@ -49,9 +42,9 @@ public class ResendPremioGanhoEmailSender implements PremioGanhoEmailSender {
 			resend.enviar(
 					emailFrom,
 					e.destinatario(),
-					"🎉 Você ganhou — " + e.tituloCaixinha(),
-					String.format(
-							CORPO, e.tituloCaixinha(), e.valorPremio(), e.linkCaixinha()));
+					PremioGanhoEmails.assunto(e),
+					PremioGanhoEmails.html(e),
+					PremioGanhoEmails.texto(e));
 			log.info(
 					"Aviso de prêmio Resend enviado para {} (caixinha={})",
 					e.destinatario(),

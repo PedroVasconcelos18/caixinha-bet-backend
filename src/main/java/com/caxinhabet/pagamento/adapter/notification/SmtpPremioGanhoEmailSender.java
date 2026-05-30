@@ -2,12 +2,13 @@ package com.caxinhabet.pagamento.adapter.notification;
 
 import com.caxinhabet.pagamento.domain.PremioGanhoEmail;
 import com.caxinhabet.pagamento.domain.PremioGanhoEmailSender;
+import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,13 +27,6 @@ public class SmtpPremioGanhoEmailSender implements PremioGanhoEmailSender {
 	private static final Logger log =
 			LoggerFactory.getLogger(SmtpPremioGanhoEmailSender.class);
 
-	private static final String CORPO =
-			"🎉 BOA! Você é um dos Ganhadores da caixinha '%s'!\n\n"
-					+ "Seu prêmio: R$ %s\n\n"
-					+ "Entre no app para confirmar sua chave PIX e receber:\n%s\n\n"
-					+ "O dinheiro só sai depois que você aceitar — está tudo no seu controle.\n"
-					+ "Caixinha Bet";
-
 	private final JavaMailSender mailSender;
 	private final String emailFrom;
 
@@ -47,13 +41,12 @@ public class SmtpPremioGanhoEmailSender implements PremioGanhoEmailSender {
 	@Override
 	public void enviarAvisoPremio(PremioGanhoEmail e) {
 		try {
-			SimpleMailMessage msg = new SimpleMailMessage();
-			msg.setFrom(emailFrom);
-			msg.setTo(e.destinatario());
-			msg.setSubject("🎉 Você ganhou — " + e.tituloCaixinha());
-			msg.setText(
-					String.format(
-							CORPO, e.tituloCaixinha(), e.valorPremio(), e.linkCaixinha()));
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+			h.setFrom(emailFrom);
+			h.setTo(e.destinatario());
+			h.setSubject(PremioGanhoEmails.assunto(e));
+			h.setText(PremioGanhoEmails.texto(e), PremioGanhoEmails.html(e));
 			mailSender.send(msg);
 			log.info(
 					"Aviso de prêmio SMTP enviado para {} (caixinha={})",

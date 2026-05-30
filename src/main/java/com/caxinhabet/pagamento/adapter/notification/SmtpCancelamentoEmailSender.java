@@ -2,12 +2,13 @@ package com.caxinhabet.pagamento.adapter.notification;
 
 import com.caxinhabet.pagamento.domain.CancelamentoEmail;
 import com.caxinhabet.pagamento.domain.CancelamentoEmailSender;
+import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,22 +28,6 @@ public class SmtpCancelamentoEmailSender implements CancelamentoEmailSender {
 	private static final Logger log =
 			LoggerFactory.getLogger(SmtpCancelamentoEmailSender.class);
 
-	private static final String CORPO_COM_PAGAMENTO =
-			"A caixinha '%s' não fechou — não atingiu o número mínimo de"
-					+ " participantes no prazo.\n\n"
-					+ "Você pagou o ingresso, então já estamos devolvendo seu dinheiro"
-					+ " automaticamente, valor cheio, direto na origem do pagamento."
-					+ " Você não precisa fazer nada.\n\n"
-					+ "Acontece — quem sabe na próxima!\n"
-					+ "Caixinha Bet";
-
-	private static final String CORPO_SEM_PAGAMENTO =
-			"A caixinha '%s' não fechou — não atingiu o número mínimo de"
-					+ " participantes no prazo.\n\n"
-					+ "Como você ainda não tinha pago o ingresso, não há nada a"
-					+ " devolver. Fica para a próxima!\n\n"
-					+ "Caixinha Bet";
-
 	private final JavaMailSender mailSender;
 	private final String emailFrom;
 
@@ -57,16 +42,12 @@ public class SmtpCancelamentoEmailSender implements CancelamentoEmailSender {
 	@Override
 	public void enviarAvisoCancelamento(CancelamentoEmail e) {
 		try {
-			SimpleMailMessage msg = new SimpleMailMessage();
-			msg.setFrom(emailFrom);
-			msg.setTo(e.destinatario());
-			msg.setSubject("A caixinha '" + e.tituloCaixinha() + "' não fechou");
-			msg.setText(
-					String.format(
-							e.houvePagamento()
-									? CORPO_COM_PAGAMENTO
-									: CORPO_SEM_PAGAMENTO,
-							e.tituloCaixinha()));
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+			h.setFrom(emailFrom);
+			h.setTo(e.destinatario());
+			h.setSubject(CancelamentoEmails.assunto(e));
+			h.setText(CancelamentoEmails.texto(e), CancelamentoEmails.html(e));
 			mailSender.send(msg);
 			log.info(
 					"Aviso de cancelamento SMTP enviado para {} (caixinha={})",
