@@ -1,13 +1,14 @@
 package com.caxinhabet.auth.adapter.notification;
 
 import com.caxinhabet.auth.domain.MagicLinkSender;
+import jakarta.mail.internet.MimeMessage;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
@@ -44,20 +45,14 @@ public class SmtpMagicLinkSender implements MagicLinkSender {
 	@Override
 	public void enviar(String email, String linkAbsoluto, Instant expiraEm) {
 		try {
-			SimpleMailMessage msg = new SimpleMailMessage();
-			msg.setFrom(emailFrom);
-			msg.setTo(email);
-			msg.setSubject("Seu link de acesso ao Caixinha Bet");
-			msg.setText(
-					"Oi!\n\n"
-							+ "Clica no link abaixo para entrar no Caixinha Bet. Ele vale por"
-							+ " 15 minutos e só pode ser usado uma vez:\n\n"
-							+ linkAbsoluto
-							+ "\n\n"
-							+ "Se não foi você que pediu, é só ignorar este e-mail — sem"
-							+ " ações na sua conta.\n\n"
-							+ "Até já,\n"
-							+ "Caixinha Bet");
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+			h.setFrom(emailFrom);
+			h.setTo(email);
+			h.setSubject("Seu link de acesso ao Caixinha Bet");
+			h.setText(
+					MagicLinkEmails.textoAcesso(linkAbsoluto),
+					MagicLinkEmails.htmlAcesso(linkAbsoluto)); // (plain, html)
 			mailSender.send(msg);
 			log.info("Magic link SMTP enviado para {}", email);
 		} catch (Exception e) {
@@ -68,21 +63,14 @@ public class SmtpMagicLinkSender implements MagicLinkSender {
 	@Override
 	public void enviarVerificacao(String email, String linkAbsoluto, Instant expiraEm) {
 		try {
-			SimpleMailMessage msg = new SimpleMailMessage();
-			msg.setFrom(emailFrom);
-			msg.setTo(email);
-			msg.setSubject("Confirme seu e-mail no Caixinha Bet");
-			msg.setText(
-					"Oi!\n\n"
-							+ "Para concluir seu cadastro no Caixinha Bet, confirme seu"
-							+ " e-mail clicando no link abaixo. Ele vale por 24 horas e só"
-							+ " pode ser usado uma vez:\n\n"
-							+ linkAbsoluto
-							+ "\n\n"
-							+ "Se não foi você que pediu, é só ignorar este e-mail — sem"
-							+ " ações na sua conta.\n\n"
-							+ "Até já,\n"
-							+ "Caixinha Bet");
+			MimeMessage msg = mailSender.createMimeMessage();
+			MimeMessageHelper h = new MimeMessageHelper(msg, true, "UTF-8");
+			h.setFrom(emailFrom);
+			h.setTo(email);
+			h.setSubject("Confirme seu e-mail no Caixinha Bet");
+			h.setText(
+					MagicLinkEmails.textoVerificacao(linkAbsoluto),
+					MagicLinkEmails.htmlVerificacao(linkAbsoluto));
 			mailSender.send(msg);
 			log.info("Verificação de e-mail SMTP enviada para {}", email);
 		} catch (Exception e) {
