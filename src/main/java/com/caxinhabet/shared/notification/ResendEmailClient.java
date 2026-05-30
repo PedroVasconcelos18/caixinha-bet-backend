@@ -27,11 +27,13 @@ public class ResendEmailClient {
 	}
 
 	/**
-	 * Envia um e-mail de texto simples. Lança {@link RuntimeException} se a
-	 * API recusar ou a key não estiver configurada — o adapter chamador
+	 * Envia e-mail com corpo HTML e alternativa texto puro (multipart). O
+	 * {@code text} é o fallback obrigatório (deliverability + leitores texto);
+	 * o {@code html} é o corpo renderizado. Lança {@link RuntimeException} se
+	 * a API recusar ou a key não estiver configurada — o adapter chamador
 	 * captura e loga (best-effort).
 	 */
-	public void enviar(String from, String to, String subject, String text) {
+	public void enviar(String from, String to, String subject, String html, String text) {
 		if (!configurado) {
 			throw new IllegalStateException(
 					"RESEND_API_KEY não configurada — não é possível enviar via Resend HTTP");
@@ -39,11 +41,19 @@ public class ResendEmailClient {
 		http.post()
 				.uri("/emails")
 				.contentType(MediaType.APPLICATION_JSON)
-				.body(new EmailRequest(from, to, subject, text))
+				.body(new EmailRequest(from, to, subject, html, text))
 				.retrieve()
 				.toBodilessEntity();
 	}
 
+	/**
+	 * Atalho legado (só texto). Mantido para callers fora do escopo de HTML;
+	 * delega com {@code html=null}.
+	 */
+	public void enviar(String from, String to, String subject, String text) {
+		enviar(from, to, subject, null, text);
+	}
+
 	/** Payload da API do Resend. {@code to} aceita string única ou lista. */
-	private record EmailRequest(String from, String to, String subject, String text) {}
+	private record EmailRequest(String from, String to, String subject, String html, String text) {}
 }
