@@ -10,6 +10,13 @@ import com.caxinhabet.auth.adapter.persistence.VerificacaoEmailRepository;
 import com.caxinhabet.auth.adapter.session.SessaoStore;
 import com.caxinhabet.auth.domain.CpfJaCadastradoException;
 import com.caxinhabet.auth.domain.EmailJaCadastradoException;
+import com.caxinhabet.caixinha.adapter.persistence.CaixinhaEntity;
+import com.caxinhabet.caixinha.adapter.persistence.CaixinhaRepository;
+import com.caxinhabet.caixinha.domain.EstadoCaixinha;
+import com.caxinhabet.participante.adapter.persistence.ParticipanteEntity;
+import com.caxinhabet.participante.adapter.persistence.ParticipanteRepository;
+import com.caxinhabet.participante.domain.StatusParticipante;
+import java.time.Instant;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,9 +53,13 @@ class RegistrarUsuarioUseCaseTest {
     @Autowired private SessaoStore sessaoStore;
     @Autowired private LogMagicLinkSender sender;
     @Autowired private PasswordEncoder encoder;
+    @Autowired private CaixinhaRepository caixinhas;
+    @Autowired private ParticipanteRepository participantes;
 
     @BeforeEach
     void setUp() {
+        participantes.deleteAll();
+        caixinhas.deleteAll();
         verificacoes.deleteAll();
         usuarios.deleteAll();
         sessaoStore.limpar();
@@ -71,6 +82,43 @@ class RegistrarUsuarioUseCaseTest {
         assertThat(verificacoes.count()).isEqualTo(1L);
         assertThat(sender.linksEnviados()).hasSize(1);
         assertThat(sessaoStore.tamanho()).isZero();
+    }
+
+    @Test
+    @DisplayName(
+            "Cadastro vincula convites pendentes (mesmo e-mail, usuario_id NULL) ao novo usuário"
+                    + " — para aparecerem no dashboard")
+    void vinculaConvitesPendentes() {
+        // Convite criado por e-mail ANTES de a usuária existir: Participante com
+        // usuario_id NULL. É a situação do convidado que ainda não tem conta.
+        long donoId = usuarios.save(UsuarioEntity.criar("dono@local")).getId();
+        CaixinhaEntity c =
+                caixinhas.save(
+                        new CaixinhaEntity(
+                                "Copa",
+                                "Brasil",
+                                "Marrocos",
+                                4000L,
+                                3,
+                                1,
+                                Instant.now().plusSeconds(86400 * 30),
+                                Instant.now().plusSeconds(86400 * 30 + 3600),
+                                EstadoCaixinha.coletando_convites,
+                                donoId));
+        // O EnviarConvitesUseCase grava o e-mail já normalizado em minúsculas;
+        // reproduzimos a mesma forma aqui.
+        participantes.save(
+                new ParticipanteEntity(
+                        c.getId(), null, "alice@local", false, StatusParticipante.convidado));
+
+        registrar.executar("Alice", "529.982.247-25", "alice@local", "senha1234", NASC);
+
+        long aliceId = usuarios.findByEmail("alice@local").orElseThrow().getId();
+        ParticipanteEntity p =
+                participantes.findByCaixinhaIdAndEmail(c.getId(), "alice@local").orElseThrow();
+        assertThat(p.getUsuarioId()).isEqualTo(aliceId);
+        // O status do convite NÃO muda no cadastro (continua `convidado` até aceitar).
+        assertThat(p.getStatus()).isEqualTo(StatusParticipante.convidado);
     }
 
     @Test

@@ -15,6 +15,17 @@ public interface ParticipanteRepository extends JpaRepository<ParticipanteEntity
 	List<ParticipanteEntity> findByUsuarioId(Long usuarioId);
 
 	/**
+	 * Convites ainda não vinculados a um Usuário (Participante criado por e-mail
+	 * na Story 2.4, com {@code usuario_id} NULL). Usado no cadastro
+	 * ({@code RegistrarUsuarioUseCase}) para vincular os convites pendentes do
+	 * e-mail ao novo Usuário, de modo que apareçam no dashboard
+	 * ({@link #findByUsuarioId}) assim que ele entrar — sem depender de ele
+	 * abrir o link do convite. O {@code email} é {@code citext}, então casa
+	 * sem diferenciar maiúsculas/minúsculas.
+	 */
+	List<ParticipanteEntity> findByEmailAndUsuarioIdIsNull(String email);
+
+	/**
 	 * Story 3.1 (FR-6): conta Participantes por caixinha + conjunto de status.
 	 * Usado pelo {@code AvaliarTransicaoAceitesService} para decidir se a
 	 * Caixinha deve transicionar para {@code coletando_pagamentos}.

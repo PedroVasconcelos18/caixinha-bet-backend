@@ -7,7 +7,10 @@ import com.caxinhabet.auth.domain.CpfJaCadastradoException;
 import com.caxinhabet.auth.domain.DataNascimento;
 import com.caxinhabet.auth.domain.EmailJaCadastradoException;
 import com.caxinhabet.auth.domain.Senha;
+import com.caxinhabet.participante.adapter.persistence.ParticipanteEntity;
+import com.caxinhabet.participante.adapter.persistence.ParticipanteRepository;
 import java.time.LocalDate;
+import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,14 +38,17 @@ public class RegistrarUsuarioUseCase {
 	private final UsuarioRepository usuarios;
 	private final PasswordEncoder encoder;
 	private final SolicitarVerificacaoEmailUseCase solicitarVerificacao;
+	private final ParticipanteRepository participantes;
 
 	public RegistrarUsuarioUseCase(
 			UsuarioRepository usuarios,
 			PasswordEncoder encoder,
-			SolicitarVerificacaoEmailUseCase solicitarVerificacao) {
+			SolicitarVerificacaoEmailUseCase solicitarVerificacao,
+			ParticipanteRepository participantes) {
 		this.usuarios = usuarios;
 		this.encoder = encoder;
 		this.solicitarVerificacao = solicitarVerificacao;
+		this.participantes = participantes;
 	}
 
 	@Transactional
@@ -74,7 +80,31 @@ public class RegistrarUsuarioUseCase {
 						UsuarioEntity.criarComSenha(
 								email, nome, cpf.digitos(), nascimento.valor(), hash));
 
+		vincularConvitesPendentes(usuario, email);
+
 		solicitarVerificacao.executar(usuario);
+	}
+
+	/**
+	 * Vincula ao novo Usuário os convites pendentes do mesmo e-mail (Participante
+	 * criado por convite na Story 2.4, com {@code usuario_id} NULL). Sem isso, o
+	 * dashboard ({@code ListarCaixinhasUseCase}, que filtra por {@code usuario_id})
+	 * não exibe as Caixinhas para as quais o convidado foi chamado até ele abrir o
+	 * link do convite. Espelha o vínculo preguiçoso da Story 2.5
+	 * ({@code BuscarConviteUseCase}).
+	 *
+	 * <p>Seguro fazer já no cadastro (antes da verificação): o acesso à sessão
+	 * exige {@code email_verificado=true} (login e confirmação), então só quem
+	 * controla o e-mail chega a ver os convites — mesma garantia do vínculo por
+	 * e-mail já existente.
+	 */
+	private void vincularConvitesPendentes(UsuarioEntity usuario, String email) {
+		List<ParticipanteEntity> pendentes =
+				participantes.findByEmailAndUsuarioIdIsNull(email);
+		for (ParticipanteEntity p : pendentes) {
+			p.setUsuarioId(usuario.getId());
+		}
+		participantes.saveAll(pendentes);
 	}
 
 	private static String normalizar(String email) {
