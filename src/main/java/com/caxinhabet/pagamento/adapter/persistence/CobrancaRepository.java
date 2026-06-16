@@ -28,4 +28,14 @@ public interface CobrancaRepository extends JpaRepository<CobrancaEntity, Long> 
 	 * precisam de reconciliação contínua.
 	 */
 	List<CobrancaEntity> findByEstadoIn(Collection<EstadoCobranca> estados);
+
+	/**
+	 * Cobrança mais recente do Participante, em qualquer estado. Usado pelo
+	 * polling de status da tela de pagamento: ao confirmar, a cobrança deixa
+	 * de ser {@code ativa} (vira {@code confirmada}) — então o status NÃO
+	 * pode filtrar por {@code ativa} como o GET da cobrança vigente faz.
+	 * Ordena por {@code criadoEm} desc para refletir a última gerada.
+	 */
+	Optional<CobrancaEntity> findTopByParticipanteIdOrderByCriadoEmDesc(
+			long participanteId);
 }
