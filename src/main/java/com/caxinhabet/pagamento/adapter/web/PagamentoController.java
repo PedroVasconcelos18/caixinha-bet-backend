@@ -30,6 +30,9 @@ import org.springframework.web.server.ResponseStatusException;
  *   <li>{@code POST /caixinhas/{id}/cobranca} — gera nova cobrança PIX.
  *   <li>{@code GET /caixinhas/{id}/cobranca} — cobrança ativa do
  *       Participante autenticado (para a tela recarregar).
+ *   <li>{@code GET /caixinhas/{id}/cobranca/status} — estado da cobrança
+ *       mais recente, para o polling da tela detectar a confirmação por
+ *       webhook (que é assíncrona, fora do request do usuário).
  * </ul>
  */
 @RestController
@@ -87,6 +90,36 @@ class PagamentoController {
 												HttpStatus.NOT_FOUND,
 												"Nenhuma cobrança ativa para este Participante."));
 		return ResponseEntity.ok(CobrancaResponse.de(cobranca));
+	}
+
+	/**
+	 * Estado da cobrança mais recente do Participante — alvo do polling da
+	 * tela de pagamento (a confirmação chega por webhook, assíncrona).
+	 *
+	 * <p>Diferente do GET acima: NÃO filtra por {@code ativa} e NÃO dá 404
+	 * por ausência. Ao confirmar, a cobrança vira {@code confirmada} e o
+	 * polling lê esse estado; sem nenhuma cobrança, devolve
+	 * {@code "nenhuma"}. Anti-enumeração: precisa ser Participante (404 só
+	 * nesse caso). Expiração lazy aplicada antes de responder.
+	 */
+	@GetMapping("/status")
+	ResponseEntity<StatusCobrancaResponse> status(
+			@PathVariable long caixinhaId, Authentication auth) {
+		String email = emailAutenticado(auth);
+		ParticipanteEntity participante =
+				participantes
+						.findByCaixinhaIdAndEmail(caixinhaId, email)
+						.orElseThrow(
+								() ->
+										new ResponseStatusException(
+												HttpStatus.NOT_FOUND, "Caixinha não encontrada."));
+
+		expirarCobranca.expirarSeVencida(participante.getId());
+
+		return cobrancas
+				.findTopByParticipanteIdOrderByCriadoEmDesc(participante.getId())
+				.map(c -> ResponseEntity.ok(StatusCobrancaResponse.de(c)))
+				.orElseGet(() -> ResponseEntity.ok(StatusCobrancaResponse.nenhuma()));
 	}
 
 	private static String emailAutenticado(Authentication auth) {
